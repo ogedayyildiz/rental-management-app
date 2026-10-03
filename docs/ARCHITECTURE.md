@@ -21,13 +21,13 @@ GPS tracking + rental management platform. Web app for desktop, React Native app
 | Web | Next.js (React), Tailwind CSS, shadcn/ui, TanStack Query |
 | Mobile | React Native with Expo |
 | Maps | MapLibre GL (web + mobile), MapTiler / OSM tiles |
-| Charts | Apache ECharts |
+| Charts | Apache ECharts (a small SVG chart for now) |
 | API | NestJS (REST + WebSocket gateway) |
 | Validation | Zod (shared between server and clients) |
 | DB | PostgreSQL + PostGIS + TimescaleDB |
 | ORM | Drizzle |
 | Cache / jobs / streams | Redis, BullMQ, Redis Streams |
-| MQTT client | mqtt.js (broker: provider-hosted, or EMQX if we host it) |
+| MQTT client | mqtt.js (broker: provider-hosted, or EMQX if we host it; Mosquitto for local dev) |
 | Auth | Better Auth (self-hosted, org/role support) |
 | Notifications | Expo Push, email via Resend / AWS SES |
 | Files | S3-compatible storage (contracts, photos, service docs) |
@@ -113,7 +113,13 @@ Adapters: `MqttProvider`, `RestPollingProvider`, `WebhookProvider`. Swapping or 
 Built in from day one, even though tenant #1 is our own company. Adding it later would mean rewriting most of the app.
 
 - Every business table has `organization_id`.
-- PostgreSQL **Row-Level Security** enforces isolation. The API sets `app.current_org` per request, so a missed `WHERE` clause cannot leak data.
+- PostgreSQL **Row-Level Security** enforces isolation. The API sets `app.current_org` per transaction (`withTenant()` in `packages/db`), so a missed `WHERE` clause cannot leak data.
+- Three database roles:
+  - `postgres` runs migrations and seeds.
+  - `rental_app` is used by the API and is subject to RLS.
+  - `rental_ingest` is used by ingestion and has `BYPASSRLS`, because it writes for every tenant.
+- **Telemetry exception:** TimescaleDB won't allow RLS on a compressed hypertable or a continuous aggregate. The API role has no access to `telemetry` or `telemetry_hourly` directly. It reads them only through the `tenant_telemetry` and `tenant_telemetry_hourly` views, which filter on `app.current_org`.
+- CI checks isolation on every run: no tenant set means no rows, the wrong tenant sees no rows, and the raw telemetry table is denied.
 - Roles per membership: `owner`, `admin`, `fleet_manager`, `technician`, `finance`, `viewer`.
 - A separate platform super-admin role for the SaaS operator.
 
@@ -142,12 +148,13 @@ Built in from day one, even though tenant #1 is our own company. Adding it later
 - **rental_contracts**: id, org, customer_id, contract_no, status (`draft` · `reserved` · `active` · `completed` · `cancelled`), start_date, planned_end_date, actual_end_date, site_address, site_location, terms, total_amount, document_file_id
 - **rental_items**: id, contract_id, machine_id, rate_type (`hourly` · `daily` · `weekly` · `monthly`), rate, start_at, end_at, start_engine_hours, end_engine_hours, delivery_fee, amount
 - **payments**: id, org, contract_id, amount, due_date, received_at, method, status (`expected` · `received` · `overdue` · `written_off`), reference, note
-- **checkin_checkout_reports**: rental_item_id, type (out/in), engine_hours, soc, fuel, photos, damage_notes, signed_by
+- **inspections**: rental_item_id, type (`checkout` · `checkin`), engine_hours, battery_soc, fuel_level, photo_file_ids, damage_notes, signed_by_name
+- An **exclusion constraint** stops a machine being booked on two overlapping, non-cancelled rental items.
 
 ### Maintenance
-- **maintenance_plans**: id, org, machine_id or model_id, name (e.g. "250 h service"), interval_hours, interval_days, warn_before_hours, warn_before_days, last_done_at, last_done_hours
-- **maintenance_records**: id, org, machine_id, plan_id (nullable), type (`scheduled` · `repair` · `inspection`), performed_at, engine_hours, cost, technician_id, notes, attachments
-- Due-date logic: a plan is due when **either** the hours or the days threshold is reached, whichever comes first.
+- **maintenance_plans**: id, org, machine_id, name (e.g. "250 h service"), interval_hours, interval_days, warn_before_hours, warn_before_days, baseline_date, baseline_hours. Plans belong to one machine; per-model templates that copy plans onto new machines come later.
+- **maintenance_records**: id, org, machine_id, plan_id (nullable), type (`scheduled` · `repair` · `inspection`), performed_at, engine_hours, cost, technician_id, notes
+- Due-date logic (`maintenanceDue()` in `packages/shared`, unit-tested): counted from the latest record for the plan, or the baseline. A plan is due when **either** the hours or the days threshold is reached, whichever comes first.
 
 ### Cross-cutting
 - **alert_rules**: org, type (low_soc, error_severity, geofence_exit, maintenance_due, rental_overdue, offline), params, recipients
@@ -169,23 +176,9 @@ Built in from day one, even though tenant #1 is our own company. Adding it later
 | Net contribution / ROI | (collected − maintenance cost) ÷ purchase_price |
 | Next service due | from maintenance_plans + current engine hours |
 
-## 7. Repository layout (planned)
+## 7. Repository layout
 
-```
-apps/
-  api/          NestJS REST + WebSocket gateway
-  ingestion/    telemetry ingestion workers
-  web/          Next.js dashboard
-  mobile/       Expo app
-packages/
-  shared/       Zod schemas, types, enums
-  db/           Drizzle schema, migrations, seed
-  api-client/   typed client used by web + mobile
-  ui/           shared web UI components
-infra/
-  docker-compose.yml   postgres+timescale+postgis, redis, emqx (local dev)
-docs/
-```
+See the [README](../README.md) for the folder layout and how to run everything locally.
 
 ## 8. Open questions
 

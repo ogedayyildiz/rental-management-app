@@ -1,0 +1,25 @@
+{
+  "name": "rental-management-app",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "db:generate": "pnpm --filter @rental/db generate",
+    "db:migrate": "pnpm --filter @rental/db migrate",
+    "db:seed": "pnpm --filter @rental/db seed",
+    "simulate": "pnpm --filter @rental/simulator start"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.7",
+    "typescript": "^5.9.3"
+  }
+}

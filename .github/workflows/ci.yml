@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: Build, typecheck, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run build typecheck lint test
+
+  database:
+    name: Migrations, seed and tenant isolation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rental
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rental"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGPASSWORD: postgres
+      DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/rental
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @rental/shared build
+      - name: Create roles (what docker compose does locally)
+        run: psql -h localhost -U postgres -d rental -v ON_ERROR_STOP=1 -f infra/postgres/init.sql
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+      - name: API role only sees the tenant it is scoped to
+        env:
+          PGPASSWORD: rental_app
+        run: |
+          q() { psql -h localhost -U rental_app -d rental -tA -v ON_ERROR_STOP=1 -c "$1" | tail -n1; }
+          test "$(q "select count(*) from machines")" = "0"
+          test "$(q "select set_config('app.current_org','00000000-0000-4000-8000-000000000001',false); select count(*) from machines;")" = "50"
+          test "$(q "select set_config('app.current_org','11111111-1111-4111-8111-111111111111',false); select count(*) from machines;")" = "0"
+          ! psql -h localhost -U rental_app -d rental -c "select 1 from telemetry limit 1" 2>/dev/null

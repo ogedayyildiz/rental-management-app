@@ -1,0 +1,21 @@
+{
+  "name": "@rental/simulator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Publishes fake GPS telemetry over MQTT for development",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file-if-exists=../../.env --import tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@rental/shared": "workspace:*",
+    "mqtt": "^5.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
