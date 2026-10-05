@@ -14,9 +14,9 @@
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "db:generate": "pnpm --filter @rental/db generate",
-    "db:migrate": "pnpm --filter @rental/db migrate",
-    "db:seed": "pnpm --filter @rental/db seed",
-    "simulate": "pnpm --filter @rental/simulator start"
+    "db:migrate": "turbo run build --filter=@rental/shared --output-logs=errors-only && pnpm --filter @rental/db migrate",
+    "db:seed": "turbo run build --filter=@rental/shared --output-logs=errors-only && pnpm --filter @rental/db seed",
+    "simulate": "turbo run build --filter=@rental/shared --output-logs=errors-only && pnpm --filter @rental/simulator start"
   },
   "devDependencies": {
     "turbo": "^2.11.7",
