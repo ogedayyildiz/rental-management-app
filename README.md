@@ -26,7 +26,7 @@ Requirements: **Node 22+**, **pnpm 10+** (`corepack enable`), **Docker**.
 
 ```bash
 pnpm install
-cp .env.example .env
+cp .env.example .env    # Windows PowerShell: copy .env.example .env
 
 pnpm infra:up        # Postgres/Timescale/PostGIS, Redis, MQTT broker
 pnpm db:migrate      # create tables, hypertable, row-level security

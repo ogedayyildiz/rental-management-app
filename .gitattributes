@@ -1,0 +1,4 @@
+# Keep LF line endings on every OS (config files are mounted into Linux containers)
+* text=auto eol=lf
+*.png binary
+*.ico binary

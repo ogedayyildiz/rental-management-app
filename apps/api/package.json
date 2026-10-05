@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json && (tsc -p tsconfig.json --watch --preserveWatchOutput & node --env-file-if-exists=../../.env --watch-path=dist --watch-preserve-output dist/main.js)",
+    "dev": "tsc-watch -p tsconfig.json --onSuccess \"node --env-file-if-exists=../../.env dist/main.js\"",
     "start": "node --env-file-if-exists=../../.env dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -27,6 +27,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.19.0",
+    "tsc-watch": "^7.2.1",
     "typescript": "^5.9.3"
   }
 }
