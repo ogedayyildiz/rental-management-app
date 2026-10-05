@@ -3,6 +3,7 @@
 import { MACHINE_STATUSES, type MachineStatus } from "@rental/shared";
 import Link from "next/link";
 import { useState } from "react";
+import { ButtonLink } from "@/components/form";
 import { Battery, ErrorCodes, ErrorMessage, Loading, StatusBadge } from "@/components/ui";
 import { STATUS_LABEL, isOnline, timeAgo } from "@/lib/format";
 import { useLiveMachines } from "@/lib/live";
@@ -26,7 +27,8 @@ export default function MachinesPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Machines</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/machines/new">+ Add machine</ButtonLink>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}

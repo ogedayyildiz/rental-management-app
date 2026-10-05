@@ -22,6 +22,20 @@
       "when": 1791036497246,
       "tag": "0002_timescale_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791211784621,
+      "tag": "0003_offers_and_price_list",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791211785770,
+      "tag": "0004_confirmed_bookings",
+      "breakpoints": true
     }
   ]
 }

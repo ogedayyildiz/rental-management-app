@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useMemo } from "react";
+import { ButtonLink } from "@/components/form";
 import { MachineMap } from "@/components/machine-map";
 import { Battery, Card, ErrorCodes, ErrorMessage, Kpi, Loading, StatusBadge } from "@/components/ui";
 import { api, type ErrorEvent, type MachineDetail, type MaintenancePlan, type TelemetryPoint } from "@/lib/api";
@@ -43,6 +44,14 @@ export function MachineDetailView({ id }: { id: string }) {
           {m.manufacturer} {m.model} · {m.serialNo}
           {m.device && ` · GPS ${m.device.externalId}`}
         </span>
+        <span className="ml-auto flex gap-2">
+          <ButtonLink href={`/rentals/new?machineId=${m.id}`} variant="secondary">
+            New offer
+          </ButtonLink>
+          <ButtonLink href={`/machines/${m.id}/edit`} variant="secondary">
+            Edit
+          </ButtonLink>
+        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -69,7 +78,9 @@ export function MachineDetailView({ id }: { id: string }) {
           <Card title="Current rental">
             {m.currentRental ? (
               <div className="text-sm">
-                <div className="font-medium">{m.currentRental.contractNo}</div>
+                <Link href={`/rentals/${m.currentRental.contractId}`} className="font-medium hover:underline">
+                  {m.currentRental.contractNo}
+                </Link>
                 <div className="text-muted">
                   since {new Date(m.currentRental.startAt).toLocaleDateString()}
                   {m.currentRental.plannedEndDate && ` · until ${m.currentRental.plannedEndDate}`}

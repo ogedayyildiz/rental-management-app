@@ -10,8 +10,31 @@ export const createMachineSchema = z.object({
   purchasePrice: z.number().nonnegative().optional(),
   homeDepotId: z.string().uuid().optional(),
   notes: z.string().max(2000).optional(),
+  /** GPS device id as the provider reports it (IMEI/serial); links live tracking */
+  gpsDeviceId: z.string().trim().max(120).optional(),
+  gpsProvider: z.string().trim().max(60).optional(),
 });
 export type CreateMachineInput = z.infer<typeof createMachineSchema>;
+
+/** Statuses staff set by hand; rented/reserved follow from rental contracts. */
+export const MANUAL_MACHINE_STATUSES = ['available', 'maintenance', 'out_of_service', 'retired'] as const;
+
+export const updateMachineSchema = createMachineSchema.partial().extend({
+  status: z.enum(MANUAL_MACHINE_STATUSES).optional(),
+});
+export type UpdateMachineInput = z.infer<typeof updateMachineSchema>;
+
+const money = z.number().nonnegative().max(1e12);
+
+export const machineModelInputSchema = z.object({
+  manufacturer: z.string().trim().min(1).max(120),
+  model: z.string().trim().min(1).max(120),
+  category: z.string().trim().min(1).max(60),
+  dailyRate: money.optional(),
+  weeklyRate: money.optional(),
+  monthlyRate: money.optional(),
+});
+export type MachineModelInput = z.infer<typeof machineModelInputSchema>;
 
 export const machineListItemSchema = z.object({
   id: z.string().uuid(),

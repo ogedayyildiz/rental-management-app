@@ -34,3 +34,31 @@ export function timeAgo(iso: string | null): string {
 /** Same threshold the API uses for "online" */
 export const isOnline = (lastSeenAt: string | null) =>
   !!lastSeenAt && Date.now() - new Date(lastSeenAt).getTime() < 5 * 60_000;
+
+export const CONTRACT_STATUS_LABEL = {
+  draft: "Offer",
+  reserved: "Confirmed",
+  active: "On rent",
+  completed: "Completed",
+  cancelled: "Cancelled",
+} as const;
+
+export const CONTRACT_STATUS_COLOR = {
+  draft: "#6b7280",
+  reserved: "#9333ea",
+  active: "#2563eb",
+  completed: "#16a34a",
+  cancelled: "#dc2626",
+} as const;
+
+export const RATE_TYPE_LABEL = { hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly" } as const;
+export const RATE_UNIT = { hourly: "hour", daily: "day", weekly: "week", monthly: "month" } as const;
+
+/** 2026-10-05 → 05.10.2026 */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return `${d}.${m}.${y}`;
+}
+
+export const todayIso = () => new Date().toISOString().slice(0, 10);

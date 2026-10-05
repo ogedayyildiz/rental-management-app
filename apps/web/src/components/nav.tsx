@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/", label: "Dashboard" },
   { href: "/map", label: "Live map" },
+  { href: "/rentals", label: "Offers & rentals" },
+  { href: "/customers", label: "Customers" },
   { href: "/machines", label: "Machines" },
   { href: "/maintenance", label: "Maintenance" },
 ];
@@ -13,7 +15,7 @@ const links = [
 export function Nav() {
   const pathname = usePathname();
   return (
-    <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface p-3 md:w-52 md:flex-col md:border-r md:border-b-0">
+    <nav className="flex print:hidden shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface p-3 md:w-52 md:flex-col md:border-r md:border-b-0">
       <div className="hidden px-2 py-1 font-semibold md:mb-4 md:block">Fleet & Rentals</div>
       {links.map((l) => {
         const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);

@@ -1,9 +1,22 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
-import { createMachineSchema, type CreateMachineInput } from '@rental/shared';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  createMachineSchema,
+  updateMachineSchema,
+  type CreateMachineInput,
+  type UpdateMachineInput,
+} from '@rental/shared';
 import { z } from 'zod';
 import { ZodPipe } from '../common/zod.pipe.js';
 import { OrgId } from '../tenant/tenant.js';
 import { MachinesService } from './machines.service.js';
+
+const availabilityQuery = z
+  .object({
+    from: z.iso.date(),
+    to: z.iso.date(),
+    excludeContractId: z.string().uuid().optional(),
+  })
+  .refine((q) => q.to >= q.from, { message: '"to" is before "from"' });
 
 const telemetryQuery = z.object({
   from: z.coerce.date().optional(),
@@ -25,9 +38,27 @@ export class MachinesController {
     return this.machines.create(orgId, body);
   }
 
+  /** Which machines can be booked for a period; used by the offer form. */
+  @Get('availability')
+  availability(
+    @OrgId() orgId: string,
+    @Query(new ZodPipe(availabilityQuery)) q: z.infer<typeof availabilityQuery>,
+  ) {
+    return this.machines.availability(orgId, q.from, q.to, q.excludeContractId);
+  }
+
   @Get(':id')
   get(@OrgId() orgId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.machines.get(orgId, id);
+  }
+
+  @Patch(':id')
+  update(
+    @OrgId() orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodPipe(updateMachineSchema)) body: UpdateMachineInput,
+  ) {
+    return this.machines.update(orgId, id, body);
   }
 
   /** Raw readings, newest `limit` within [from, to]; defaults to the last 24 h. */

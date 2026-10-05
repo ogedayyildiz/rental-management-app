@@ -33,6 +33,10 @@ export const machineModels = pgTable('machine_models', {
   /** e.g. scissor_lift, excavator, generator */
   category: text('category').notNull(),
   specs: jsonb('specs').notNull().default({}),
+  /** Price list; pre-fills offer lines */
+  dailyRate: numeric('daily_rate', { precision: 14, scale: 2 }),
+  weeklyRate: numeric('weekly_rate', { precision: 14, scale: 2 }),
+  monthlyRate: numeric('monthly_rate', { precision: 14, scale: 2 }),
   createdAt: createdAt(),
 });
 

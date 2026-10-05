@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   date,
   doublePrecision,
@@ -59,8 +60,9 @@ export const rentalContracts = pgTable(
 );
 
 /**
- * A machine on a contract. A custom migration adds an exclusion constraint so
- * the same machine can never be booked on two overlapping, non-cancelled items.
+ * A machine on a contract. Lines of an offer are not yet `confirmed`; once the
+ * customer accepts, they are, and an exclusion constraint (custom migration)
+ * stops the same machine being booked on two overlapping confirmed lines.
  */
 export const rentalItems = pgTable(
   'rental_items',
@@ -83,6 +85,8 @@ export const rentalItems = pgTable(
     deliveryFee: money('delivery_fee').notNull().default('0'),
     /** Agreed amount for this line; drives revenue-per-machine reporting */
     amount: money('amount'),
+    /** True once the contract is confirmed; only confirmed lines block the calendar */
+    confirmed: boolean('confirmed').notNull().default(false),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
     createdAt: createdAt(),
   },

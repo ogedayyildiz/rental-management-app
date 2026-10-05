@@ -63,6 +63,13 @@ All routes live under `/api`. Until authentication is added, requests act as the
 | `GET /machines/:id/telemetry?from&to&limit` | Raw readings (last 24 h by default) |
 | `GET /machines/:id/errors` | Error history |
 | `GET /maintenance/plans?status&machineId` | Plans with due status (`ok`, `due_soon`, `overdue`) |
+| `PATCH /machines/:id` | Edit a machine, change its status, link or unlink its GPS device |
+| `GET /machines/availability?from&to` | Which machines can be booked for a period |
+| `GET/POST /machine-models` · `PATCH /machine-models/:id` · `GET /depots` | Models with price list (daily, weekly, monthly), depots |
+| `GET/POST /customers` · `GET/PATCH /customers/:id` | Customers |
+| `GET/POST /rentals` · `GET/PUT /rentals/:id` | Offers and rentals (`PUT` edits an offer) |
+| `POST /rentals/:id/confirm` · `start` · `complete` · `cancel` | Offer → confirmed (machines booked) → on rent → completed |
+| `POST /rentals/:id/payments` · `POST /payments/:id/receive` | Expected payments and marking them received |
 | Socket.IO namespace `/live` | `machine:state` events with each new reading |
 
 ## Status
@@ -76,9 +83,15 @@ All routes live under `/api`. Until authentication is added, requests act as the
 - Web dashboard, live map, machine list and detail, maintenance list.
 - Mobile machine list and detail with live updates.
 
+- Add and edit machines (with GPS device ID) and machine models with a price list.
+- Customers.
+- Offers with automatic pricing (daily, weekly, monthly, delivery fee), a printable offer, then confirm → start → complete. A machine can't be double-booked once an offer is confirmed.
+- Payments per rental: expected, received, overdue.
+
 **Next up**
 - Authentication and user roles (the API currently trusts `DEV_ORG_ID`; production refuses all requests until auth exists).
-- Create and edit screens for machines, customers, contracts and payments; record maintenance; check-out and check-in inspections with photos.
+- Record maintenance from the UI; check-out and check-in inspections with photos.
+- Offers and rentals on the mobile app (it currently shows machines only).
 - Alert rules and push and email notifications.
 - Adapter for the real GPS provider once its API and MQTT details are known (`apps/ingestion/src/providers`).
 - Reports: utilization over time and error frequency per machine (the `telemetry_hourly` rollup is already in place).

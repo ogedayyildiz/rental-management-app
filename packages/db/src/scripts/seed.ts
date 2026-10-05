@@ -63,13 +63,20 @@ await db.transaction(async (tx) => {
   const models = await tx
     .insert(s.machineModels)
     .values([
-      { manufacturer: 'JLG', model: '1930ES', category: 'scissor_lift' },
-      { manufacturer: 'Genie', model: 'Z-45 XC', category: 'boom_lift' },
-      { manufacturer: 'Caterpillar', model: '301.7 CR', category: 'mini_excavator' },
-      { manufacturer: 'Bobcat', model: 'S70', category: 'skid_steer' },
-      { manufacturer: 'Atlas Copco', model: 'QAS 60', category: 'generator' },
-      { manufacturer: 'Toyota', model: '8FBE15', category: 'forklift' },
-    ].map((m) => ({ ...m, organizationId: DEMO_ORG_ID })))
+      { manufacturer: 'JLG', model: '1930ES', category: 'scissor_lift', daily: 1500 },
+      { manufacturer: 'Genie', model: 'Z-45 XC', category: 'boom_lift', daily: 3500 },
+      { manufacturer: 'Caterpillar', model: '301.7 CR', category: 'mini_excavator', daily: 4000 },
+      { manufacturer: 'Bobcat', model: 'S70', category: 'skid_steer', daily: 3000 },
+      { manufacturer: 'Atlas Copco', model: 'QAS 60', category: 'generator', daily: 2000 },
+      { manufacturer: 'Toyota', model: '8FBE15', category: 'forklift', daily: 1800 },
+    ].map(({ daily, ...m }) => ({
+      ...m,
+      organizationId: DEMO_ORG_ID,
+      // Weekly ≈ 5 days, monthly ≈ 18 days: the usual long-hire discount
+      dailyRate: String(daily),
+      weeklyRate: String(daily * 5),
+      monthlyRate: String(daily * 18),
+    })))
     .returning();
 
   // --- machines & GPS devices -------------------------------------------
@@ -128,10 +135,6 @@ await db.transaction(async (tx) => {
     )
     .returning();
 
-  const dailyRate: Record<string, number> = {
-    scissor_lift: 1500, boom_lift: 3500, mini_excavator: 4000,
-    skid_steer: 3000, generator: 2000, forklift: 1800,
-  };
   const modelById = new Map(models.map((m) => [m.id, m]));
   const pool = [...machines];
   let contractSeq = 1;
@@ -152,7 +155,7 @@ await db.transaction(async (tx) => {
     if (chosen.length === 0) break;
 
     const items = chosen.map((m) => {
-      const rate = dailyRate[modelById.get(m.modelId)!.category]!;
+      const rate = Number(modelById.get(m.modelId)!.dailyRate);
       return { machine: m, rate, amount: rate * days };
     });
     const total = items.reduce((sum, it) => sum + it.amount, 0);
@@ -181,8 +184,9 @@ await db.transaction(async (tx) => {
         rateType: 'daily' as const,
         rate: String(it.rate),
         startAt: start,
-        endAt: active ? null : end,
+        endAt: end,
         amount: String(it.amount),
+        confirmed: true,
       })),
     );
 
