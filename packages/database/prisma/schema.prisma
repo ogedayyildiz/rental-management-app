@@ -1,0 +1,293 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BranchScope {
+  ALL_BRANCHES
+  SELECTED_BRANCHES
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum PermissionScope {
+  TENANT
+  PLATFORM
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+}
+
+enum AuditResult {
+  SUCCESS
+  DENIED
+  FAILURE
+}
+
+model Organization {
+  id              String                   @id @default(uuid()) @db.Uuid
+  name            String                   @db.VarChar(200)
+  legalName       String?                  @db.VarChar(200)
+  defaultCurrency String                   @db.Char(3)
+  defaultLanguage String                   @db.VarChar(10)
+  timezone        String                   @db.VarChar(100)
+  country         String?                  @db.Char(2)
+  status          OrganizationStatus       @default(ACTIVE)
+  createdAt       DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                 @updatedAt @db.Timestamptz(3)
+  memberships     Membership[]
+  roles           Role[]
+  branches        Branch[]
+  invitations     OrganizationInvitation[]
+  auditEvents     AuditEvent[]
+}
+
+model User {
+  id                  String                   @id @default(uuid()) @db.Uuid
+  name                String                   @db.VarChar(200)
+  email               String                   @db.VarChar(320)
+  preferredLanguage   String?                  @db.VarChar(10)
+  timezone            String?                  @db.VarChar(100)
+  status              AccountStatus            @default(ACTIVE)
+  createdAt           DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                 @updatedAt @db.Timestamptz(3)
+  identities          ExternalIdentity[]
+  memberships         Membership[]
+  platformAccess      PlatformAccess?
+  sentInvitations     OrganizationInvitation[] @relation("InvitationSender")
+  acceptedInvitations OrganizationInvitation[] @relation("InvitationAcceptor")
+  auditEvents         AuditEvent[]
+
+  @@index([email])
+}
+
+// Identity is keyed by OIDC issuer + subject, never by an unverified email claim.
+model ExternalIdentity {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  issuer    String   @db.VarChar(2048)
+  subject   String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([issuer, subject])
+  @@index([userId])
+}
+
+model Membership {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @db.Uuid
+  userId         String             @db.Uuid
+  status         MembershipStatus   @default(INACTIVE)
+  branchScope    BranchScope        @default(SELECTED_BRANCHES)
+  joinedAt       DateTime?          @db.Timestamptz(3)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime           @updatedAt @db.Timestamptz(3)
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  roles          MembershipRole[]
+  branches       MembershipBranch[]
+
+  @@unique([organizationId, userId])
+  @@unique([organizationId, id])
+  @@index([userId])
+}
+
+model Role {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  name           String           @db.VarChar(200)
+  enabled        Boolean          @default(true)
+  templateKey    String?          @db.VarChar(100)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  permissions    RolePermission[]
+  memberships    MembershipRole[]
+  invitations    InvitationRole[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, name])
+}
+
+model Permission {
+  key           String                   @id @db.VarChar(100)
+  scope         PermissionScope
+  tenantRoles   RolePermission[]
+  platformRoles PlatformRolePermission[]
+
+  @@unique([key, scope])
+}
+
+model RolePermission {
+  organizationId  String          @db.Uuid
+  roleId          String          @db.Uuid
+  permissionKey   String          @db.VarChar(100)
+  permissionScope PermissionScope @default(TENANT)
+  role            Role            @relation(fields: [organizationId, roleId], references: [organizationId, id], onDelete: Restrict)
+  permission      Permission      @relation(fields: [permissionKey, permissionScope], references: [key, scope], onDelete: Restrict)
+
+  @@id([organizationId, roleId, permissionKey])
+}
+
+model MembershipRole {
+  organizationId String     @db.Uuid
+  membershipId   String     @db.Uuid
+  roleId         String     @db.Uuid
+  membership     Membership @relation(fields: [organizationId, membershipId], references: [organizationId, id], onDelete: Restrict)
+  role           Role       @relation(fields: [organizationId, roleId], references: [organizationId, id], onDelete: Restrict)
+
+  @@id([organizationId, membershipId, roleId])
+  @@index([organizationId, roleId])
+}
+
+model Branch {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @db.Uuid
+  name           String             @db.VarChar(200)
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime           @updatedAt @db.Timestamptz(3)
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  memberships    MembershipBranch[]
+  invitations    InvitationBranch[]
+
+  @@unique([organizationId, id])
+}
+
+model MembershipBranch {
+  organizationId String     @db.Uuid
+  membershipId   String     @db.Uuid
+  branchId       String     @db.Uuid
+  membership     Membership @relation(fields: [organizationId, membershipId], references: [organizationId, id], onDelete: Restrict)
+  branch         Branch     @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+
+  @@id([organizationId, membershipId, branchId])
+  @@index([organizationId, branchId])
+}
+
+model OrganizationInvitation {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @db.Uuid
+  email          String             @db.VarChar(320)
+  invitedById    String             @db.Uuid
+  acceptedById   String?            @db.Uuid
+  tokenHash      String             @unique @db.Char(64)
+  status         InvitationStatus   @default(PENDING)
+  branchScope    BranchScope        @default(SELECTED_BRANCHES)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  expiresAt      DateTime           @db.Timestamptz(3)
+  acceptedAt     DateTime?          @db.Timestamptz(3)
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invitedBy      User               @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict)
+  acceptedBy     User?              @relation("InvitationAcceptor", fields: [acceptedById], references: [id], onDelete: Restrict)
+  roles          InvitationRole[]
+  branches       InvitationBranch[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, email, status])
+}
+
+model InvitationRole {
+  organizationId String                 @db.Uuid
+  invitationId   String                 @db.Uuid
+  roleId         String                 @db.Uuid
+  invitation     OrganizationInvitation @relation(fields: [organizationId, invitationId], references: [organizationId, id], onDelete: Restrict)
+  role           Role                   @relation(fields: [organizationId, roleId], references: [organizationId, id], onDelete: Restrict)
+
+  @@id([organizationId, invitationId, roleId])
+}
+
+model InvitationBranch {
+  organizationId String                 @db.Uuid
+  invitationId   String                 @db.Uuid
+  branchId       String                 @db.Uuid
+  invitation     OrganizationInvitation @relation(fields: [organizationId, invitationId], references: [organizationId, id], onDelete: Restrict)
+  branch         Branch                 @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+
+  @@id([organizationId, invitationId, branchId])
+}
+
+model PlatformAccess {
+  id        String               @id @default(uuid()) @db.Uuid
+  userId    String               @unique @db.Uuid
+  active    Boolean              @default(false)
+  createdAt DateTime             @default(now()) @db.Timestamptz(3)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  roles     PlatformAccessRole[]
+}
+
+model PlatformRole {
+  id          String                   @id @default(uuid()) @db.Uuid
+  name        String                   @unique @db.VarChar(200)
+  enabled     Boolean                  @default(true)
+  permissions PlatformRolePermission[]
+  accesses    PlatformAccessRole[]
+}
+
+model PlatformAccessRole {
+  accessId String         @db.Uuid
+  roleId   String         @db.Uuid
+  access   PlatformAccess @relation(fields: [accessId], references: [id], onDelete: Restrict)
+  role     PlatformRole   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([accessId, roleId])
+}
+
+model PlatformRolePermission {
+  roleId          String          @db.Uuid
+  permissionKey   String          @db.VarChar(100)
+  permissionScope PermissionScope @default(PLATFORM)
+  role            PlatformRole    @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  permission      Permission      @relation(fields: [permissionKey, permissionScope], references: [key, scope], onDelete: Restrict)
+
+  @@id([roleId, permissionKey])
+}
+
+model AuditEvent {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String?        @db.Uuid
+  actorType      AuditActorType
+  actorUserId    String?        @db.Uuid
+  systemActor    String?        @db.VarChar(100)
+  action         String         @db.VarChar(100)
+  targetType     String         @db.VarChar(100)
+  targetId       String         @db.VarChar(200)
+  timestamp      DateTime       @default(now()) @db.Timestamptz(3)
+  result         AuditResult
+  source         String         @db.VarChar(100)
+  requestId      String         @db.Uuid
+  metadata       Json
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor          User?          @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, timestamp])
+  @@index([actorUserId, timestamp])
+}

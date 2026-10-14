@@ -1,0 +1,35 @@
+{
+  "name": "rental-management",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=24.3.0 <25",
+    "pnpm": "12.9.1"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "eslint eslint.config.mjs tests --max-warnings 0 && turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run build && node --env-file-if-exists=.env --test tests/*.test.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "db:migrate": "pnpm --filter @rental/database migrate",
+    "db:migrate:dev": "pnpm --filter @rental/database migrate:dev",
+    "db:seed": "turbo run build --filter=@rental/database && pnpm --filter @rental/database seed"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "24.19.2",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
+    "turbo": "2.11.7",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1"
+  }
+}

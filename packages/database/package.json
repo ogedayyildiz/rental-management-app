@@ -1,0 +1,27 @@
+{
+  "name": "@rental/database",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "pnpm generate && tsc -p tsconfig.json",
+    "lint": "eslint src prisma.config.ts --max-warnings 0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "generate": "prisma generate",
+    "migrate": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate deploy",
+    "migrate:dev": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js migrate dev",
+    "seed": "node --env-file-if-exists=../../.env dist/seed.js"
+  },
+  "devDependencies": {
+    "@rental/config": "workspace:*",
+    "prisma": "7.10.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "@prisma/client": "7.10.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@rental/validation": "workspace:*",
+    "@rental/permissions": "workspace:*"
+  }
+}
