@@ -2,8 +2,14 @@
 
 Multi-tenant SaaS platform for equipment rental management, fleet operations, maintenance, telemetry, GPS tracking, CAN-based machine data, remote machine actions, financial analytics, documents, and reporting.
 
-> **Project status:** Database, tenant-context, authorization and audit foundation.  
-> Identity/access persistence and protected branch read/update endpoints are implemented. Authentication provider integration and operational business domains remain deferred.
+> **Project status:** Authentication and organization onboarding.  
+> Managed Auth0 adapters, web/mobile integration and transactional invitations are implemented. Real Auth0 configuration and live-login verification remain required; product domains remain deferred.
+
+See [authentication and onboarding setup](docs/13-AUTHENTICATION-AND-ONBOARDING.md)
+for required environment values, Auth0 dashboard steps, callback URLs and current
+verification limits. This supersedes authentication/onboarding deferrals in the
+original bootstrap instructions below. The API and web server now require Auth0
+configuration at startup; no development authentication bypass exists.
 
 ---
 

@@ -2,7 +2,18 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { createDatabase } from '@rental/database';
 import type { PrismaClient } from '@rental/database';
-import { IdentityVerifier } from './access/contracts.js';
+import {
+  IdentityVerifier,
+  InvitationIdentityVerifier,
+} from './access/contracts.js';
+import { readAuth0Environment } from '@rental/config';
+import { Auth0IdentityVerifier } from './authentication/auth0.verifier.js';
+import { OnboardingService } from './onboarding/onboarding.service.js';
+import { OnboardingController } from './onboarding/onboarding.controller.js';
+import { PrismaOnboardingUnitOfWork } from './infrastructure/prisma.onboarding.js';
+import { CurrentUserService } from './access/current-user.service.js';
+import { PrismaCurrentUserRepository } from './infrastructure/prisma.current-user.js';
+import { CurrentUserController } from './access/current-user.controller.js';
 import {
   AccessService,
   AuthenticationService,
@@ -22,14 +33,9 @@ class DatabaseLifecycle {
     await this.database.$disconnect();
   }
 }
-class UnconfiguredIdentityVerifier extends IdentityVerifier {
-  override async verify(): Promise<null> {
-    return null;
-  }
-}
 
 @Module({
-  controllers: [BranchController],
+  controllers: [BranchController, OnboardingController, CurrentUserController],
   providers: [
     {
       provide: DATABASE,
@@ -40,7 +46,24 @@ class UnconfiguredIdentityVerifier extends IdentityVerifier {
       inject: [DATABASE],
       useFactory: (db: PrismaClient) => new DatabaseLifecycle(db),
     },
-    { provide: IdentityVerifier, useClass: UnconfiguredIdentityVerifier },
+    {
+      provide: IdentityVerifier,
+      useFactory: () =>
+        new Auth0IdentityVerifier(readAuth0Environment(process.env)),
+    },
+    { provide: InvitationIdentityVerifier, useExisting: IdentityVerifier },
+    {
+      provide: OnboardingService,
+      inject: [DATABASE, InvitationIdentityVerifier],
+      useFactory: (db: PrismaClient, verifier: InvitationIdentityVerifier) =>
+        new OnboardingService(new PrismaOnboardingUnitOfWork(db), verifier),
+    },
+    {
+      provide: CurrentUserService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new CurrentUserService(new PrismaCurrentUserRepository(db)),
+    },
     {
       provide: PrismaAccessRepository,
       inject: [DATABASE],

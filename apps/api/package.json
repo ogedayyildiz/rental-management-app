@@ -11,15 +11,16 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@rental/config": "workspace:*",
     "@nestjs/common": "12.1.2",
     "@nestjs/core": "12.1.2",
     "@nestjs/platform-express": "12.1.2",
-    "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2",
+    "@rental/config": "workspace:*",
     "@rental/database": "workspace:*",
+    "@rental/permissions": "workspace:*",
     "@rental/validation": "workspace:*",
-    "@rental/permissions": "workspace:*"
+    "jose": "6.2.12",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
   },
   "devDependencies": {
     "@nestjs/cli": "12.0.8",

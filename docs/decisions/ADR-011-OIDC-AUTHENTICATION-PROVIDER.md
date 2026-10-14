@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — provider selected for review; authentication implementation is not authorized by this ADR alone.
+Accepted — managed Auth0 selected. Authentication and organization onboarding were subsequently authorized as a separate implementation phase.
 
 Evaluation completed: 2026-10-14. Provider documentation and pricing were consulted on 2026-10-13–14. Commercial terms and product capabilities must be rechecked before procurement.
 

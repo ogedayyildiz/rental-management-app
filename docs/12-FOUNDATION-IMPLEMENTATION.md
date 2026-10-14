@@ -1,5 +1,8 @@
 # Database, access and audit foundation
 
+This describes the original foundation phase. Authentication and invitation
+deferrals below are superseded by [the authentication/onboarding implementation](13-AUTHENTICATION-AND-ONBOARDING.md).
+
 This records implementation choices within the existing architecture and ADR-008.
 It does not replace the architecture, domain, authorization or security documents.
 

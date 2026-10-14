@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { onboardingCases } from './onboarding.cases.mjs';
 import { createDatabase } from '../packages/database/dist/index.js';
 import {
   tenantPermissions,
@@ -665,6 +666,31 @@ test(
             401,
           );
           assert.equal(await status(path, { headers }), 200);
+          const me = await fetch(`${base}/me`, { headers });
+          assert.equal(me.status, 200);
+          const profile = await me.json();
+          assert.equal(profile.id, a.user.id);
+          assert.equal(
+            profile.organizations[0].access.organizationId,
+            a.organization.id,
+          );
+          assert.deepEqual(profile.platformPermissions, []);
+          assert.equal(
+            await status('/platform/organizations', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ name: 'Denied' }),
+            }),
+            403,
+          );
+          assert.equal(
+            await status('/invitations/accept', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ token: 'a'.repeat(43) }),
+            }),
+            401,
+          );
           assert.equal(
             await status(
               `/organizations/${b.organization.id}/branches/${b.branch.id}`,
@@ -705,8 +731,11 @@ test(
       );
 
       await suite.test(
-        'default runtime verifier denies every credential without an OIDC integration',
+        'runtime Auth0 verifier rejects a non-JWT credential',
         async () => {
+          process.env.AUTH0_ISSUER = 'https://identity.example.test/';
+          process.env.AUTH0_AUDIENCE = 'test-api';
+          process.env.AUTH0_ALLOWED_CLIENT_IDS = 'test-web';
           const a = await fixture();
           const module = await Test.createTestingModule({
             imports: [FoundationModule],
@@ -726,6 +755,7 @@ test(
           app = undefined;
         },
       );
+      await onboardingCases(suite, db, fixture);
     } finally {
       if (app) await app.close();
       if (db) await db.$disconnect();

@@ -1,6 +1,13 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "globalDependencies": [".env", "eslint.config.mjs", ".prettierrc.json"],
+  "globalEnv": [
+    "AUTH0_*",
+    "APP_BASE_URL",
+    "API_BASE_URL",
+    "EXPO_PUBLIC_*",
+    "MOBILE_*"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

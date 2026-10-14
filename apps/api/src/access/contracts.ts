@@ -11,6 +11,18 @@ export abstract class IdentityVerifier {
   ): Promise<ExternalIdentityReference | null>;
 }
 
+export interface VerifiedInvitationIdentity extends ExternalIdentityReference {
+  readonly email: string;
+  readonly name: string;
+}
+
+// Onboarding additionally requires provider-verified ownership of the invited email.
+export abstract class InvitationIdentityVerifier {
+  abstract verifyInvitationIdentity(
+    credential: string,
+  ): Promise<VerifiedInvitationIdentity | null>;
+}
+
 export interface TenantAccessRecord {
   readonly membershipId: string;
   readonly userId: string;
