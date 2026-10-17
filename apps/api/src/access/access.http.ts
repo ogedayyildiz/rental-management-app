@@ -112,6 +112,8 @@ export class SafeErrorFilter implements ExceptionFilter {
         ACCESS_DENIED: 403,
         NOT_FOUND: 404,
         INVALID_INPUT: 400,
+        CONFLICT: 409,
+        INACTIVE_CUSTOMER: 409,
       }[exception.code];
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();

@@ -2,8 +2,11 @@
 
 Multi-tenant SaaS platform for equipment rental management, fleet operations, maintenance, telemetry, GPS tracking, CAN-based machine data, remote machine actions, financial analytics, documents, and reporting.
 
-> **Project status:** Authentication and organization onboarding.  
-> Managed Auth0 adapters, web/mobile integration and transactional invitations are implemented. Real Auth0 configuration and live-login verification remain required; product domains remain deferred.
+> **Project status:** Customer management implemented.
+>
+> Real Auth0 web authentication, platform bootstrap and two-user tenant onboarding are verified. Customers now have a tenant-scoped API and English/Turkish web interface at `/customers`. Other product domains remain deferred; real mobile login verification remains separate.
+
+See [Customer implementation contracts](docs/15-CUSTOMER-IMPLEMENTATION.md) for permissions, identifiers, addresses, pagination, audit behavior and development-data notes.
 
 See [authentication and onboarding setup](docs/13-AUTHENTICATION-AND-ONBOARDING.md)
 for required environment values, Auth0 dashboard steps, callback URLs and current

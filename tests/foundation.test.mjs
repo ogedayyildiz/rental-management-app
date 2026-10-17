@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { onboardingCases } from './onboarding.cases.mjs';
+import { customerCases } from './customers.cases.mjs';
 import { platformBootstrapCases } from './platform-bootstrap.cases.mjs';
 import { createDatabase } from '../packages/database/dist/index.js';
 import {
@@ -88,7 +89,11 @@ test(
         ['PLATFORM', platformPermissions],
       ]) {
         for (const key of keys)
-          await db.permission.create({ data: { key, scope } });
+          await db.permission.upsert({
+            where: { key },
+            create: { key, scope },
+            update: {},
+          });
       }
       await platformBootstrapCases(suite, db);
       const repository = new PrismaAccessRepository(db);
@@ -758,6 +763,13 @@ test(
         },
       );
       await onboardingCases(suite, db, fixture);
+      await customerCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
     } finally {
       if (app) await app.close();
       if (db) await db.$disconnect();

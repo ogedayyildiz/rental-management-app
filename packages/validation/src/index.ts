@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './customers.js';
 
 export const identifierSchema = z.uuid();
 export const databaseUrlSchema = z

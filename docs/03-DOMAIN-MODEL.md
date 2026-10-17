@@ -562,6 +562,11 @@ These are different concepts.
 
 Customers belong to one organization.
 
+The initial implemented Customer, contact and address contracts are detailed in
+[Customer implementation](15-CUSTOMER-IMPLEMENTATION.md). Customers are shared
+organization records, not branch-owned records. Billing addresses are canonical
+CustomerAddress records; inactive customers and their history are retained.
+
 A customer may be:
 
 ```text

@@ -3,6 +3,10 @@ export const tenantPermissions = [
   'users.manage',
   'roles.manage',
   'branches.manage',
+  'customers.read',
+  'customers.create',
+  'customers.update',
+  'customers.archive',
 ] as const;
 export const platformPermissions = [
   'platform.organization.read',

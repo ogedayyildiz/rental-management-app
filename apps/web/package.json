@@ -10,6 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@rental/api-client": "workspace:*",
     "@auth0/nextjs-auth0": "4.31.1",
     "@rental/i18n": "workspace:*",
     "@rental/validation": "workspace:*",

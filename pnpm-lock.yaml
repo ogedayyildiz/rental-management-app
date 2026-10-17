@@ -273,6 +273,9 @@ importers:
       '@auth0/nextjs-auth0':
         specifier: 4.31.1
         version: 4.31.1(next@16.4.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@24.19.2)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@rental/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@rental/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -315,6 +318,10 @@ importers:
         version: link:../../packages/config
 
   packages/api-client:
+    dependencies:
+      '@rental/validation':
+        specifier: workspace:*
+        version: link:../validation
     devDependencies:
       '@rental/config':
         specifier: workspace:*

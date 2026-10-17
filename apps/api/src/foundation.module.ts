@@ -25,6 +25,9 @@ import {
 } from './infrastructure/prisma.repositories.js';
 import { BranchService } from './branches/branch.service.js';
 import { BranchController } from './branches/branch.controller.js';
+import { CustomerController } from './customers/customer.controller.js';
+import { CustomerService } from './customers/customer.service.js';
+import { PrismaCustomerUnitOfWork } from './infrastructure/prisma.customers.js';
 
 export const DATABASE = Symbol('database');
 class DatabaseLifecycle {
@@ -35,8 +38,19 @@ class DatabaseLifecycle {
 }
 
 @Module({
-  controllers: [BranchController, OnboardingController, CurrentUserController],
+  controllers: [
+    BranchController,
+    OnboardingController,
+    CurrentUserController,
+    CustomerController,
+  ],
   providers: [
+    {
+      provide: CustomerService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new CustomerService(new PrismaCustomerUnitOfWork(db)),
+    },
     {
       provide: DATABASE,
       useFactory: () => createDatabase(process.env['DATABASE_URL']),

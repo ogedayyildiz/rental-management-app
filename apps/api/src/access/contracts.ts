@@ -46,7 +46,12 @@ export interface AccessRepository {
 export class AccessError extends Error {
   constructor(
     readonly code:
-      'UNAUTHENTICATED' | 'ACCESS_DENIED' | 'NOT_FOUND' | 'INVALID_INPUT',
+      | 'UNAUTHENTICATED'
+      | 'ACCESS_DENIED'
+      | 'NOT_FOUND'
+      | 'INVALID_INPUT'
+      | 'CONFLICT'
+      | 'INACTIVE_CUSTOMER',
   ) {
     super(code);
   }

@@ -67,6 +67,7 @@ model Organization {
   branches        Branch[]
   invitations     OrganizationInvitation[]
   auditEvents     AuditEvent[]
+  customers       Customer[]
 }
 
 model User {
@@ -84,6 +85,8 @@ model User {
   sentInvitations     OrganizationInvitation[] @relation("InvitationSender")
   acceptedInvitations OrganizationInvitation[] @relation("InvitationAcceptor")
   auditEvents         AuditEvent[]
+  createdCustomers Customer[] @relation("CustomerCreator")
+  updatedCustomers Customer[] @relation("CustomerUpdater")
 
   @@index([email])
 }
@@ -290,4 +293,89 @@ model AuditEvent {
 
   @@index([organizationId, timestamp])
   @@index([actorUserId, timestamp])
+}
+
+enum CustomerType {
+  COMPANY
+  INDIVIDUAL
+}
+enum CustomerIdentifierKind {
+  TAX
+  NATIONAL
+}
+enum CustomerAddressType {
+  BILLING
+  HEADQUARTERS
+  DELIVERY
+  SITE
+  OTHER
+}
+model Customer {
+  id String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  customerNumber String @db.VarChar(50)
+  type CustomerType
+  displayName String @db.VarChar(200)
+  legalName String? @db.VarChar(200)
+  taxOffice String? @db.VarChar(100)
+  identifierCountry String? @db.Char(2)
+  identifierKind CustomerIdentifierKind?
+  identifierValue String? @db.VarChar(40)
+  primaryEmail String? @db.VarChar(320)
+  primaryPhone String? @db.VarChar(40)
+  phoneSearch String? @db.VarChar(40)
+  notes String? @db.VarChar(5000)
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  createdById String @db.Uuid
+  updatedById String @db.Uuid
+  organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
+  createdBy User @relation("CustomerCreator",fields:[createdById],references:[id],onDelete:Restrict)
+  updatedBy User @relation("CustomerUpdater",fields:[updatedById],references:[id],onDelete:Restrict)
+  contacts CustomerContact[]
+  addresses CustomerAddress[]
+  @@unique([organizationId,id])
+  @@unique([organizationId,customerNumber])
+  @@unique([organizationId,identifierCountry,identifierKind,identifierValue])
+  @@index([organizationId,active,createdAt,id])
+  @@index([organizationId,createdAt,id])
+}
+model CustomerContact {
+  id String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  customerId String @db.Uuid
+  name String @db.VarChar(200)
+  title String? @db.VarChar(100)
+  email String? @db.VarChar(320)
+  phone String? @db.VarChar(40)
+  phoneSearch String? @db.VarChar(40)
+  notes String? @db.VarChar(2000)
+  isPrimary Boolean @default(false)
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  customer Customer @relation(fields:[organizationId,customerId],references:[organizationId,id],onDelete:Restrict)
+  @@unique([organizationId,customerId,id])
+}
+model CustomerAddress {
+  id String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  customerId String @db.Uuid
+  type CustomerAddressType
+  label String @db.VarChar(100)
+  countryCode String @db.Char(2)
+  region String? @db.VarChar(100)
+  city String @db.VarChar(100)
+  district String? @db.VarChar(100)
+  postalCode String? @db.VarChar(20)
+  line1 String @db.VarChar(250)
+  line2 String? @db.VarChar(250)
+  notes String? @db.VarChar(2000)
+  isPrimary Boolean @default(false)
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  customer Customer @relation(fields:[organizationId,customerId],references:[organizationId,id],onDelete:Restrict)
+  @@unique([organizationId,customerId,id])
 }

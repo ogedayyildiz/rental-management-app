@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuth0 } from '../../../../lib/auth0';
+import { customerEndpointAllowed } from '@rental/api-client';
 
 // Fixed route allowlist and origin: never an arbitrary credential-bearing proxy.
 async function forward(
@@ -9,6 +10,7 @@ async function forward(
   const { path } = await context.params;
   const endpoint = path.join('/');
   const allowed =
+    customerEndpointAllowed(request.method, endpoint) ||
     (request.method === 'GET' && endpoint === 'me') ||
     (request.method === 'POST' &&
       (endpoint === 'invitations/accept' ||
@@ -22,7 +24,7 @@ async function forward(
   if (!allowed)
     return NextResponse.json({ code: 'NOT_FOUND' }, { status: 404 });
   if (
-    request.method === 'POST' &&
+    request.method !== 'GET' &&
     request.headers.get('origin') !==
       new URL(process.env.APP_BASE_URL ?? '').origin
   )
@@ -32,11 +34,14 @@ async function forward(
     if (!(await auth0.getSession()))
       return NextResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 });
     const { token } = await auth0.getAccessToken();
-    const body = request.method === 'POST' ? await request.text() : undefined;
+    const body = request.method !== 'GET' ? await request.text() : undefined;
     if (body && body.length > 16384)
       return NextResponse.json({ code: 'INVALID_INPUT' }, { status: 400 });
     const response = await fetch(
-      new URL(endpoint, `${process.env.API_BASE_URL?.replace(/\/$/, '')}/`),
+      new URL(
+        endpoint + new URL(request.url).search,
+        `${process.env.API_BASE_URL?.replace(/\/$/, '')}/`,
+      ),
       {
         method: request.method,
         headers: {
@@ -65,3 +70,4 @@ async function forward(
 }
 export const GET = forward;
 export const POST = forward;
+export const PATCH = forward;

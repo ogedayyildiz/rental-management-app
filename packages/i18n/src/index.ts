@@ -1,5 +1,7 @@
+import { customerMessages } from './customers.js';
 export const messages = {
   en: {
+    ...customerMessages.en,
     'auth.login': 'Log in',
     'auth.logout': 'Log out',
     'auth.currentUser': 'Check application access',
@@ -15,6 +17,7 @@ export const messages = {
       'The workspace is ready. Business features will be added in the next phase.',
   },
   tr: {
+    ...customerMessages.tr,
     'auth.login': 'Giriş yap',
     'auth.logout': 'Çıkış yap',
     'auth.currentUser': 'Uygulama erişimini kontrol et',
