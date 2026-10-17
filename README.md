@@ -11,6 +11,9 @@ verification limits. This supersedes authentication/onboarding deferrals in the
 original bootstrap instructions below. The API and web server now require Auth0
 configuration at startup; no development authentication bypass exists.
 
+For first-time Auth0 setup, follow the [local verification checklist](docs/14-AUTH0-LOCAL-VERIFICATION.md),
+including the audited one-time platform operator command and two-user browser/mobile checks.
+
 ---
 
 ## 1. Product Scope

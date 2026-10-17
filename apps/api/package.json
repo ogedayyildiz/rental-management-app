@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node --env-file-if-exists=../../.env node_modules/@nestjs/cli/bin/nest.js start --watch",
     "build": "tsc -p tsconfig.json",
+    "bootstrap:platform": "node --env-file-if-exists=../../.env --env-file-if-exists=../web/.env.local dist/bootstrap-platform.js",
     "start": "node --env-file-if-exists=../../.env dist/main.js",
     "lint": "eslint src --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit"

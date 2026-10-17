@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { onboardingCases } from './onboarding.cases.mjs';
+import { platformBootstrapCases } from './platform-bootstrap.cases.mjs';
 import { createDatabase } from '../packages/database/dist/index.js';
 import {
   tenantPermissions,
@@ -89,6 +90,7 @@ test(
         for (const key of keys)
           await db.permission.create({ data: { key, scope } });
       }
+      await platformBootstrapCases(suite, db);
       const repository = new PrismaAccessRepository(db);
       const authentication = new AuthenticationService(
         new TestVerifier(),

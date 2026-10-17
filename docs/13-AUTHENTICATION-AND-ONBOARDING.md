@@ -60,7 +60,7 @@ Do not put `AUTH0_CLIENT_SECRET`, `AUTH0_SECRET`, database credentials or any ma
 8. Configure access-token issuance to include Auth0's `azp` client identifier. The backend allowlist must contain only the intended Web and Native client IDs. No application role, membership or organization claim customization is needed.
 9. Review token/session lifetimes, logs and abuse protection. Disable request/response-body and authorization-header logging in proxies/APM, especially for invitation endpoints. Provider login logs do not replace application auditing.
 
-Generate the web cookie secret locally, for example with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`, and place it only in the ignored server environment file/secret manager. Do not send secrets in chat or commit them.
+Generate the web cookie secret directly into the ignored server environment file using the non-printing command in the [local verification guide](14-AUTH0-LOCAL-VERIFICATION.md). Do not send secrets in chat or commit them.
 
 ## Web flow
 
@@ -109,7 +109,7 @@ Audits cover organization creation, invitation creation/revocation/acceptance, m
 
 ## Initial platform operator and limits
 
-There is intentionally no public signup-to-platform-admin route and no automatically privileged first user. Before testing organization creation, a trusted database operator must provision a reviewed global User, its **verified** Auth0 issuer/subject mapping, and separate active PlatformAccess with the `platform.organization.create` permission. Use an audited administrative transaction; never infer that mapping from email or a decoded unsigned token. No such account is created without the real tenant and operator identity. Tenant invitations cannot grant platform access.
+There is no public signup-to-platform-admin route and no automatically privileged first user. A trusted local operator runs `pnpm --filter @rental/api bootstrap:platform --subject '<actual Auth0 User ID>' --confirm` after configuration and build. The command performs authorization code + PKCE through a temporary loopback callback, verifies the signed API token and verified-email userinfo through the existing adapter, and checks the exact expected subject. It transactionally creates/resolves the global identity and grants only `platform.organization.create`, with immutable bootstrap/identity audits. It rejects email-only linking, disabled users, any existing PlatformAccess (including inactive access), and a previous bootstrap audit. It never creates tenant membership and is not an HTTP application endpoint. See the [step-by-step Auth0 setup and real verification guide](14-AUTH0-LOCAL-VERIFICATION.md) for callbacks, environment mapping, bootstrap and manual checks. No actual account is created until the operator supplies real configuration and authenticates.
 
 Logout does not instantly invalidate every offline-verified access token. Configure short token lifetimes and use application user/membership suspension for application access removal. Global session revocation, additional-identity linking, provider administration UI, automated email delivery and action-specific MFA step-up remain outside this phase. These limitations must be considered before production rollout.
 
