@@ -2,9 +2,11 @@
 
 Multi-tenant SaaS platform for equipment rental management, fleet operations, maintenance, telemetry, GPS tracking, CAN-based machine data, remote machine actions, financial analytics, documents, and reporting.
 
-> **Project status:** Customer management implemented.
+> **Project status:** Customer and Machine management implemented.
 >
-> Real Auth0 web authentication, platform bootstrap and two-user tenant onboarding are verified. Customers now have a tenant-scoped API and English/Turkish web interface at `/customers`. Other product domains remain deferred; real mobile login verification remains separate.
+> Real Auth0 web authentication, platform bootstrap, two-user tenant onboarding and Customer management are manually verified. Machines now have a tenant/branch-scoped API and English/Turkish web interface at `/machines`, ready for the real tenant smoke test. Other product domains remain deferred; real mobile login verification remains separate.
+
+See [Machine implementation and smoke test](docs/16-MACHINE-IMPLEMENTATION.md) for state dimensions, branch scope, specifications and acquisition-cost permissions.
 
 See [Customer implementation contracts](docs/15-CUSTOMER-IMPLEMENTATION.md) for permissions, identifiers, addresses, pagination, audit behavior and development-data notes.
 

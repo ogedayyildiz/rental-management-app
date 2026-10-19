@@ -1,3 +1,4 @@
+import { machineCases } from './machines.cases.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -762,6 +763,13 @@ test(
           app = undefined;
         },
       );
+      await machineCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
       await onboardingCases(suite, db, fixture);
       await customerCases(suite, db, fixture, {
         Test,

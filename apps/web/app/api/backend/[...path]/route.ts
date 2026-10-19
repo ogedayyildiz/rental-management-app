@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAuth0 } from '../../../../lib/auth0';
-import { customerEndpointAllowed } from '@rental/api-client';
+import {
+  customerEndpointAllowed,
+  machineEndpointAllowed,
+} from '@rental/api-client';
 
 // Fixed route allowlist and origin: never an arbitrary credential-bearing proxy.
 async function forward(
@@ -11,6 +14,7 @@ async function forward(
   const endpoint = path.join('/');
   const allowed =
     customerEndpointAllowed(request.method, endpoint) ||
+    machineEndpointAllowed(request.method, endpoint) ||
     (request.method === 'GET' && endpoint === 'me') ||
     (request.method === 'POST' &&
       (endpoint === 'invitations/accept' ||

@@ -1,7 +1,9 @@
+import { machineMessages } from './machines.js';
 import { customerMessages } from './customers.js';
 export const messages = {
   en: {
     ...customerMessages.en,
+    ...machineMessages.en,
     'auth.login': 'Log in',
     'auth.logout': 'Log out',
     'auth.currentUser': 'Check application access',
@@ -18,6 +20,7 @@ export const messages = {
   },
   tr: {
     ...customerMessages.tr,
+    ...machineMessages.tr,
     'auth.login': 'Giriş yap',
     'auth.logout': 'Çıkış yap',
     'auth.currentUser': 'Uygulama erişimini kontrol et',

@@ -1,0 +1,146 @@
+.machine-workspace {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 2rem;
+  color: #17283a;
+  font-family: system-ui, sans-serif;
+  background: #f7f9fc;
+  min-height: 100vh;
+}
+.machine-workspace header,
+.machine-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.machine-workspace h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+.machine-workspace h2 {
+  font-size: 1.5rem;
+  font-weight: 650;
+  margin: 1rem 0;
+}
+.machine-workspace h3 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  margin: 1rem 0;
+}
+.machine-workspace p {
+  margin: 0.7rem 0;
+  color: #435369;
+}
+.machine-workspace a {
+  color: #1458a0;
+  text-decoration: underline;
+}
+.machine-panel,
+.machine-form {
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  background: white;
+  border: 1px solid #dbe3ed;
+  border-radius: 10px;
+}
+.machine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.machine-workspace label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 550;
+}
+.machine-workspace input,
+.machine-workspace select,
+.machine-workspace textarea {
+  border: 1px solid #acbacb;
+  border-radius: 5px;
+  padding: 0.65rem;
+  background: white;
+  color: #17283a;
+  min-width: 0;
+}
+.machine-workspace textarea {
+  width: 100%;
+  min-height: 6rem;
+}
+.machine-workspace button {
+  background: #164d80;
+  color: white;
+  border-radius: 5px;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+}
+.machine-workspace button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.machine-workspace :focus-visible {
+  outline: 3px solid #6caae3;
+  outline-offset: 2px;
+}
+.machine-workspace [aria-invalid='true'] {
+  border-color: #b51f32;
+}
+.machine-workspace .machine-error {
+  background: #ffedef;
+  color: #941727;
+  padding: 1rem;
+  border-radius: 5px;
+}
+.machine-table {
+  overflow-x: auto;
+  background: white;
+  border: 1px solid #dbe3ed;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+.machine-workspace table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.machine-workspace th,
+.machine-workspace td {
+  text-align: left;
+  padding: 0.8rem;
+  border-bottom: 1px solid #e1e7ef;
+}
+.machine-workspace th {
+  background: #edf2f8;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.machine-workspace dt {
+  font-size: 0.85rem;
+  color: #5e6e80;
+}
+.machine-workspace dd {
+  margin-top: 0.25rem;
+  overflow-wrap: anywhere;
+}
+.machine-workspace fieldset {
+  border: 0;
+  min-width: 0;
+}
+.machine-workspace legend {
+  font-size: 1.3rem;
+  font-weight: 650;
+}
+@media (max-width: 600px) {
+  .machine-workspace {
+    padding: 1rem;
+  }
+  .machine-grid {
+    grid-template-columns: 1fr;
+  }
+}

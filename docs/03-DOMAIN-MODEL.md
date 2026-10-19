@@ -678,6 +678,11 @@ Serial: ...
 
 A machine belongs to one organization.
 
+The initial implemented aggregate, static specification contracts, branch access,
+independent state dimensions and acquisition-data permissions are documented in
+[Machine implementation](16-MACHINE-IMPLEMENTATION.md). Telemetry and device
+relationships are not implemented in this phase.
+
 Typical machine information includes:
 
 ```text

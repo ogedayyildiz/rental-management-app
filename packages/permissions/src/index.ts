@@ -7,6 +7,12 @@ export const tenantPermissions = [
   'customers.create',
   'customers.update',
   'customers.archive',
+  'machines.read',
+  'machines.create',
+  'machines.update',
+  'machines.archive',
+  'finance.acquisition_cost.view',
+  'finance.acquisition_cost.edit',
 ] as const;
 export const platformPermissions = [
   'platform.organization.read',

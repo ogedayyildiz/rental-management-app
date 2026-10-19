@@ -67,6 +67,9 @@ model Organization {
   branches        Branch[]
   invitations     OrganizationInvitation[]
   auditEvents     AuditEvent[]
+  machines Machine[]
+  machineCategories MachineCategory[]
+  machineModels MachineModel[]
   customers       Customer[]
 }
 
@@ -85,6 +88,8 @@ model User {
   sentInvitations     OrganizationInvitation[] @relation("InvitationSender")
   acceptedInvitations OrganizationInvitation[] @relation("InvitationAcceptor")
   auditEvents         AuditEvent[]
+  createdMachines Machine[] @relation("MachineCreator")
+  updatedMachines Machine[] @relation("MachineUpdater")
   createdCustomers Customer[] @relation("CustomerCreator")
   updatedCustomers Customer[] @relation("CustomerUpdater")
 
@@ -172,6 +177,7 @@ model MembershipRole {
 }
 
 model Branch {
+  machines Machine[]
   id             String             @id @default(uuid()) @db.Uuid
   organizationId String             @db.Uuid
   name           String             @db.VarChar(200)
@@ -378,4 +384,84 @@ model CustomerAddress {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
   customer Customer @relation(fields:[organizationId,customerId],references:[organizationId,id],onDelete:Restrict)
   @@unique([organizationId,customerId,id])
+}
+
+
+enum MachineRentalState {
+  NOT_RENTED
+  RESERVED
+  RENTED
+}
+enum MachineServiceState {
+  NORMAL
+  MAINTENANCE_DUE
+  MAINTENANCE_REQUIRED
+  OUT_OF_SERVICE
+  SERVICE_BLOCKED
+}
+enum MachineLifecycleState {
+  ACTIVE
+  SOLD
+  RETIRED
+}
+enum MachineOwnershipType {
+  OWNED
+  LEASED
+  THIRD_PARTY
+}
+model MachineCategory {
+  id String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  name String @db.VarChar(200)
+  key String @db.VarChar(200)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  models MachineModel[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, key])
+}
+model MachineModel {
+  id String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  categoryId String @db.Uuid
+  manufacturer String @db.VarChar(200)
+  name String @db.VarChar(200)
+  manufacturerKey String @db.VarChar(200)
+  nameKey String @db.VarChar(200)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  category MachineCategory @relation(fields: [organizationId, categoryId], references: [organizationId, id], onDelete: Restrict)
+  machines Machine[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, categoryId, manufacturerKey, nameKey])
+}
+model Machine {
+  id String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  fleetNumber String @db.VarChar(100)
+  fleetNumberKey String @db.VarChar(100)
+  modelId String @db.Uuid
+  serialNumber String? @db.VarChar(200)
+  modelYear Int?
+  acquisitionDate DateTime? @db.Date
+  acquisitionCost Decimal? @db.Decimal(30, 6)
+  currency String? @db.Char(3)
+  ownershipType MachineOwnershipType?
+  branchId String? @db.Uuid
+  notes String? @db.VarChar(5000)
+  specifications Json @default("{}")
+  rentalState MachineRentalState @default(NOT_RENTED)
+  serviceState MachineServiceState @default(NORMAL)
+  lifecycleState MachineLifecycleState @default(ACTIVE)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  createdById String @db.Uuid
+  updatedById String @db.Uuid
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  model MachineModel @relation(fields: [organizationId, modelId], references: [organizationId, id], onDelete: Restrict)
+  branch Branch? @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+  createdBy User @relation("MachineCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy User @relation("MachineUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+  @@unique([organizationId, id])
+  @@unique([organizationId, fleetNumberKey])
+  @@index([organizationId, branchId, createdAt, id])
+  @@index([organizationId, lifecycleState, createdAt, id])
 }

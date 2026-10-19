@@ -7,6 +7,12 @@ export interface AuditRecord {
   actorUserId: string;
   actorType: 'USER';
   action:
+    | 'MACHINE_CREATED'
+    | 'MACHINE_UPDATED'
+    | 'MACHINE_BRANCH_CHANGED'
+    | 'MACHINE_SERVICE_STATE_CHANGED'
+    | 'MACHINE_LIFECYCLE_CHANGED'
+    | 'MACHINE_ARCHIVED'
     | 'BRANCH_UPDATED'
     | 'CUSTOMER_CREATED'
     | 'CUSTOMER_UPDATED'
@@ -15,12 +21,20 @@ export interface AuditRecord {
     | 'CUSTOMER_CONTACT_UPDATED'
     | 'CUSTOMER_ADDRESS_CREATED'
     | 'CUSTOMER_ADDRESS_UPDATED';
-  targetType: 'Branch' | 'Customer' | 'CustomerContact' | 'CustomerAddress';
+  targetType:
+    'Machine' | 'Branch' | 'Customer' | 'CustomerContact' | 'CustomerAddress';
   targetId: string;
   result: 'SUCCESS';
   source: 'api';
   requestId: string;
-  metadata: { before?: { name: string }; after?: { name: string } };
+  metadata: {
+    previousBranchId?: string | null;
+    nextBranchId?: string | null;
+    previousState?: string;
+    nextState?: string;
+    before?: { name: string };
+    after?: { name: string };
+  };
 }
 export interface AuditRepository {
   append(event: AuditRecord): Promise<void>;

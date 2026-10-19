@@ -1,3 +1,6 @@
+import { MachineController } from './machines/machine.controller.js';
+import { MachineService } from './machines/machine.service.js';
+import { PrismaMachineUnitOfWork } from './infrastructure/prisma.machines.js';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { createDatabase } from '@rental/database';
@@ -43,8 +46,15 @@ class DatabaseLifecycle {
     OnboardingController,
     CurrentUserController,
     CustomerController,
+    MachineController,
   ],
   providers: [
+    {
+      provide: MachineService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new MachineService(new PrismaMachineUnitOfWork(db)),
+    },
     {
       provide: CustomerService,
       inject: [DATABASE],
