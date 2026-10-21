@@ -1,5 +1,18 @@
 export const machineMessages = {
   en: {
+    'machines.committed':
+      'This machine is reserved or rented. Resolve its rental commitments before marking it sold or retired.',
+    'machines.archivedEdit':
+      'This machine is sold or retired. Restore it to the fleet before editing.',
+    'machines.commitmentConflict':
+      'This change would invalidate a rental commitment (required model, category, specifications, branch or reserved capacity). Adjust the affected booking or choose a compatible correction.',
+    'machines.restore': 'Restore to fleet',
+    'machines.restoreConfirm':
+      'Restore this machine to ACTIVE? Its service state and rental history will be preserved.',
+    'machines.restoreReason': 'Reason for restoration',
+    'machines.INCORRECT_SALE': 'Marked sold by mistake',
+    'machines.INCORRECT_RETIREMENT': 'Retired by mistake',
+    'machines.RETURNED_TO_FLEET': 'Returned to the fleet',
     'machines.title': 'Machines',
     'machines.subtitle': 'Physical rental assets · tenant and branch scoped',
     'machines.create': 'Add machine',
@@ -76,6 +89,19 @@ export const machineMessages = {
     'machines.THIRD_PARTY': 'Third party',
   },
   tr: {
+    'machines.committed':
+      'Bu makine rezerve edilmiş veya kirada. Satıldı ya da emekli durumuna almadan önce kiralama taahhütlerini çözün.',
+    'machines.archivedEdit':
+      'Bu makine satılmış veya emekli edilmiş. Düzenlemeden önce filoya geri alın.',
+    'machines.commitmentConflict':
+      'Bu değişiklik bir kiralama taahhüdünü geçersiz kılar (istenen model, kategori, özellikler, şube veya rezerve kapasite). İlgili rezervasyonu düzenleyin veya uyumlu bir düzeltme yapın.',
+    'machines.restore': 'Filoya geri al',
+    'machines.restoreConfirm':
+      'Makine AKTİF durumuna geri alınsın mı? Servis durumu ve kiralama geçmişi korunacak.',
+    'machines.restoreReason': 'Geri alma nedeni',
+    'machines.INCORRECT_SALE': 'Yanlışlıkla satıldı olarak işaretlendi',
+    'machines.INCORRECT_RETIREMENT': 'Yanlışlıkla emekli edildi',
+    'machines.RETURNED_TO_FLEET': 'Filoya geri döndü',
     'machines.title': 'Makineler',
     'machines.subtitle':
       'Fiziksel kiralama varlıkları · organizasyon ve şube kapsamı',

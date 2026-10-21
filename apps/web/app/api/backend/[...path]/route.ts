@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuth0 } from '../../../../lib/auth0';
 import {
+  rentalEndpointAllowed,
   customerEndpointAllowed,
   machineEndpointAllowed,
 } from '@rental/api-client';
@@ -13,6 +14,7 @@ async function forward(
   const { path } = await context.params;
   const endpoint = path.join('/');
   const allowed =
+    rentalEndpointAllowed(request.method, endpoint) ||
     customerEndpointAllowed(request.method, endpoint) ||
     machineEndpointAllowed(request.method, endpoint) ||
     (request.method === 'GET' && endpoint === 'me') ||

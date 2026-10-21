@@ -14,6 +14,7 @@ import {
   PrismaAccessRepository,
   PrismaAuditRepository,
 } from './prisma.repositories.js';
+import { PrismaMachineCommitments } from './prisma.machine-commitments.js';
 const include = {
   model: { include: { category: true } },
   branch: { select: { name: true } },
@@ -244,6 +245,21 @@ export class PrismaMachineRepository implements MachineRepository {
     if (!row) throw new AccessError('CONFLICT');
     return row;
   }
+  async restore(c: TenantContext, id: string) {
+    const result = await this.db.machine.updateMany({
+      where: {
+        ...this.scope(c),
+        id,
+        lifecycleState: { in: ['SOLD', 'RETIRED'] },
+        rentalState: 'NOT_RENTED',
+      },
+      data: { lifecycleState: 'ACTIVE', updatedById: c.userId },
+    });
+    if (result.count !== 1) throw new AccessError('CONFLICT');
+    const row = await this.find(c, id);
+    if (!row) throw new AccessError('NOT_FOUND');
+    return row;
+  }
   async archive(c: TenantContext, id: string, state: 'SOLD' | 'RETIRED') {
     const result = await this.db.machine.updateMany({
       where: {
@@ -271,16 +287,17 @@ export class PrismaMachineUnitOfWork extends MachineUnitOfWork {
       return await this.db.$transaction(
         (tx) =>
           work({
+            commitments: new PrismaMachineCommitments(tx),
             access: new PrismaAccessRepository(tx),
             machines: new PrismaMachineRepository(tx),
             audit: new PrismaAuditRepository(tx),
           }),
-        { isolationLevel: 'Serializable' },
+        { isolationLevel: 'Serializable', timeout: 15000 },
       );
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
-        ['P2002', 'P2034'].includes(e.code)
+        ['P2002', 'P2034', 'P2010'].includes(e.code)
       )
         throw new AccessError('CONFLICT');
       throw e;

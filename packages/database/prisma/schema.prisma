@@ -52,28 +52,33 @@ enum AuditResult {
 }
 
 model Organization {
-  id              String                   @id @default(uuid()) @db.Uuid
-  name            String                   @db.VarChar(200)
-  legalName       String?                  @db.VarChar(200)
-  defaultCurrency String                   @db.Char(3)
-  defaultLanguage String                   @db.VarChar(10)
-  timezone        String                   @db.VarChar(100)
-  country         String?                  @db.Char(2)
-  status          OrganizationStatus       @default(ACTIVE)
-  createdAt       DateTime                 @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime                 @updatedAt @db.Timestamptz(3)
-  memberships     Membership[]
-  roles           Role[]
-  branches        Branch[]
-  invitations     OrganizationInvitation[]
-  auditEvents     AuditEvent[]
-  machines Machine[]
+  rentals           Rental[]
+  rentalCounters    RentalCounter[]
+  id                String                   @id @default(uuid()) @db.Uuid
+  name              String                   @db.VarChar(200)
+  legalName         String?                  @db.VarChar(200)
+  defaultCurrency   String                   @db.Char(3)
+  defaultLanguage   String                   @db.VarChar(10)
+  timezone          String                   @db.VarChar(100)
+  country           String?                  @db.Char(2)
+  status            OrganizationStatus       @default(ACTIVE)
+  createdAt         DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                 @updatedAt @db.Timestamptz(3)
+  memberships       Membership[]
+  roles             Role[]
+  branches          Branch[]
+  invitations       OrganizationInvitation[]
+  auditEvents       AuditEvent[]
+  machines          Machine[]
   machineCategories MachineCategory[]
-  machineModels MachineModel[]
-  customers       Customer[]
+  machineModels     MachineModel[]
+  customers         Customer[]
 }
 
 model User {
+  rentalTerms         RentalItemTerm[]         @relation("RentalTermActor")
+  createdRentals      Rental[]                 @relation("RentalCreator")
+  updatedRentals      Rental[]                 @relation("RentalUpdater")
   id                  String                   @id @default(uuid()) @db.Uuid
   name                String                   @db.VarChar(200)
   email               String                   @db.VarChar(320)
@@ -88,10 +93,10 @@ model User {
   sentInvitations     OrganizationInvitation[] @relation("InvitationSender")
   acceptedInvitations OrganizationInvitation[] @relation("InvitationAcceptor")
   auditEvents         AuditEvent[]
-  createdMachines Machine[] @relation("MachineCreator")
-  updatedMachines Machine[] @relation("MachineUpdater")
-  createdCustomers Customer[] @relation("CustomerCreator")
-  updatedCustomers Customer[] @relation("CustomerUpdater")
+  createdMachines     Machine[]                @relation("MachineCreator")
+  updatedMachines     Machine[]                @relation("MachineUpdater")
+  createdCustomers    Customer[]               @relation("CustomerCreator")
+  updatedCustomers    Customer[]               @relation("CustomerUpdater")
 
   @@index([email])
 }
@@ -177,7 +182,8 @@ model MembershipRole {
 }
 
 model Branch {
-  machines Machine[]
+  rentals        Rental[]
+  machines       Machine[]
   id             String             @id @default(uuid()) @db.Uuid
   organizationId String             @db.Uuid
   name           String             @db.VarChar(200)
@@ -305,10 +311,12 @@ enum CustomerType {
   COMPANY
   INDIVIDUAL
 }
+
 enum CustomerIdentifierKind {
   TAX
   NATIONAL
 }
+
 enum CustomerAddressType {
   BILLING
   HEADQUARTERS
@@ -316,82 +324,89 @@ enum CustomerAddressType {
   SITE
   OTHER
 }
+
 model Customer {
-  id String @id @default(uuid()) @db.Uuid
-  organizationId String @db.Uuid
-  customerNumber String @db.VarChar(50)
-  type CustomerType
-  displayName String @db.VarChar(200)
-  legalName String? @db.VarChar(200)
-  taxOffice String? @db.VarChar(100)
-  identifierCountry String? @db.Char(2)
-  identifierKind CustomerIdentifierKind?
-  identifierValue String? @db.VarChar(40)
-  primaryEmail String? @db.VarChar(320)
-  primaryPhone String? @db.VarChar(40)
-  phoneSearch String? @db.VarChar(40)
-  notes String? @db.VarChar(5000)
-  active Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  createdById String @db.Uuid
-  updatedById String @db.Uuid
-  organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
-  createdBy User @relation("CustomerCreator",fields:[createdById],references:[id],onDelete:Restrict)
-  updatedBy User @relation("CustomerUpdater",fields:[updatedById],references:[id],onDelete:Restrict)
-  contacts CustomerContact[]
-  addresses CustomerAddress[]
-  @@unique([organizationId,id])
-  @@unique([organizationId,customerNumber])
-  @@unique([organizationId,identifierCountry,identifierKind,identifierValue])
-  @@index([organizationId,active,createdAt,id])
-  @@index([organizationId,createdAt,id])
-}
-model CustomerContact {
-  id String @id @default(uuid()) @db.Uuid
-  organizationId String @db.Uuid
-  customerId String @db.Uuid
-  name String @db.VarChar(200)
-  title String? @db.VarChar(100)
-  email String? @db.VarChar(320)
-  phone String? @db.VarChar(40)
-  phoneSearch String? @db.VarChar(40)
-  notes String? @db.VarChar(2000)
-  isPrimary Boolean @default(false)
-  active Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  customer Customer @relation(fields:[organizationId,customerId],references:[organizationId,id],onDelete:Restrict)
-  @@unique([organizationId,customerId,id])
-}
-model CustomerAddress {
-  id String @id @default(uuid()) @db.Uuid
-  organizationId String @db.Uuid
-  customerId String @db.Uuid
-  type CustomerAddressType
-  label String @db.VarChar(100)
-  countryCode String @db.Char(2)
-  region String? @db.VarChar(100)
-  city String @db.VarChar(100)
-  district String? @db.VarChar(100)
-  postalCode String? @db.VarChar(20)
-  line1 String @db.VarChar(250)
-  line2 String? @db.VarChar(250)
-  notes String? @db.VarChar(2000)
-  isPrimary Boolean @default(false)
-  active Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  customer Customer @relation(fields:[organizationId,customerId],references:[organizationId,id],onDelete:Restrict)
-  @@unique([organizationId,customerId,id])
+  rentals           Rental[]
+  id                String                  @id @default(uuid()) @db.Uuid
+  organizationId    String                  @db.Uuid
+  customerNumber    String                  @db.VarChar(50)
+  type              CustomerType
+  displayName       String                  @db.VarChar(200)
+  legalName         String?                 @db.VarChar(200)
+  taxOffice         String?                 @db.VarChar(100)
+  identifierCountry String?                 @db.Char(2)
+  identifierKind    CustomerIdentifierKind?
+  identifierValue   String?                 @db.VarChar(40)
+  primaryEmail      String?                 @db.VarChar(320)
+  primaryPhone      String?                 @db.VarChar(40)
+  phoneSearch       String?                 @db.VarChar(40)
+  notes             String?                 @db.VarChar(5000)
+  active            Boolean                 @default(true)
+  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
+  createdById       String                  @db.Uuid
+  updatedById       String                  @db.Uuid
+  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy         User                    @relation("CustomerCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy         User                    @relation("CustomerUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+  contacts          CustomerContact[]
+  addresses         CustomerAddress[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, customerNumber])
+  @@unique([organizationId, identifierCountry, identifierKind, identifierValue])
+  @@index([organizationId, active, createdAt, id])
+  @@index([organizationId, createdAt, id])
 }
 
+model CustomerContact {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  customerId     String   @db.Uuid
+  name           String   @db.VarChar(200)
+  title          String?  @db.VarChar(100)
+  email          String?  @db.VarChar(320)
+  phone          String?  @db.VarChar(40)
+  phoneSearch    String?  @db.VarChar(40)
+  notes          String?  @db.VarChar(2000)
+  isPrimary      Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  customer       Customer @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([organizationId, customerId, id])
+}
+
+model CustomerAddress {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  customerId     String              @db.Uuid
+  type           CustomerAddressType
+  label          String              @db.VarChar(100)
+  countryCode    String              @db.Char(2)
+  region         String?             @db.VarChar(100)
+  city           String              @db.VarChar(100)
+  district       String?             @db.VarChar(100)
+  postalCode     String?             @db.VarChar(20)
+  line1          String              @db.VarChar(250)
+  line2          String?             @db.VarChar(250)
+  notes          String?             @db.VarChar(2000)
+  isPrimary      Boolean             @default(false)
+  active         Boolean             @default(true)
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+  customer       Customer            @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([organizationId, customerId, id])
+}
 
 enum MachineRentalState {
   NOT_RENTED
   RESERVED
   RENTED
 }
+
 enum MachineServiceState {
   NORMAL
   MAINTENANCE_DUE
@@ -399,69 +414,201 @@ enum MachineServiceState {
   OUT_OF_SERVICE
   SERVICE_BLOCKED
 }
+
 enum MachineLifecycleState {
   ACTIVE
   SOLD
   RETIRED
 }
+
 enum MachineOwnershipType {
   OWNED
   LEASED
   THIRD_PARTY
 }
+
 model MachineCategory {
-  id String @id @default(uuid()) @db.Uuid
-  organizationId String @db.Uuid
-  name String @db.VarChar(200)
-  key String @db.VarChar(200)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  models MachineModel[]
+  rentalItems    RentalItem[]
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  name           String         @db.VarChar(200)
+  key            String         @db.VarChar(200)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  models         MachineModel[]
+
   @@unique([organizationId, id])
   @@unique([organizationId, key])
 }
+
 model MachineModel {
-  id String @id @default(uuid()) @db.Uuid
-  organizationId String @db.Uuid
-  categoryId String @db.Uuid
-  manufacturer String @db.VarChar(200)
-  name String @db.VarChar(200)
-  manufacturerKey String @db.VarChar(200)
-  nameKey String @db.VarChar(200)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  category MachineCategory @relation(fields: [organizationId, categoryId], references: [organizationId, id], onDelete: Restrict)
-  machines Machine[]
+  rentalItems     RentalItem[]
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @db.Uuid
+  categoryId      String          @db.Uuid
+  manufacturer    String          @db.VarChar(200)
+  name            String          @db.VarChar(200)
+  manufacturerKey String          @db.VarChar(200)
+  nameKey         String          @db.VarChar(200)
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  category        MachineCategory @relation(fields: [organizationId, categoryId], references: [organizationId, id], onDelete: Restrict)
+  machines        Machine[]
+
   @@unique([organizationId, id])
   @@unique([organizationId, categoryId, manufacturerKey, nameKey])
 }
+
 model Machine {
-  id String @id @default(uuid()) @db.Uuid
-  organizationId String @db.Uuid
-  fleetNumber String @db.VarChar(100)
-  fleetNumberKey String @db.VarChar(100)
-  modelId String @db.Uuid
-  serialNumber String? @db.VarChar(200)
-  modelYear Int?
-  acquisitionDate DateTime? @db.Date
-  acquisitionCost Decimal? @db.Decimal(30, 6)
-  currency String? @db.Char(3)
-  ownershipType MachineOwnershipType?
-  branchId String? @db.Uuid
-  notes String? @db.VarChar(5000)
-  specifications Json @default("{}")
-  rentalState MachineRentalState @default(NOT_RENTED)
-  serviceState MachineServiceState @default(NORMAL)
-  lifecycleState MachineLifecycleState @default(ACTIVE)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  createdById String @db.Uuid
-  updatedById String @db.Uuid
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  model MachineModel @relation(fields: [organizationId, modelId], references: [organizationId, id], onDelete: Restrict)
-  branch Branch? @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
-  createdBy User @relation("MachineCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy User @relation("MachineUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+  rentalAssignments RentalMachineAssignment[]
+  id                String                    @id @default(uuid()) @db.Uuid
+  organizationId    String                    @db.Uuid
+  fleetNumber       String                    @db.VarChar(100)
+  fleetNumberKey    String                    @db.VarChar(100)
+  modelId           String                    @db.Uuid
+  serialNumber      String?                   @db.VarChar(200)
+  modelYear         Int?
+  acquisitionDate   DateTime?                 @db.Date
+  acquisitionCost   Decimal?                  @db.Decimal(30, 6)
+  currency          String?                   @db.Char(3)
+  ownershipType     MachineOwnershipType?
+  branchId          String?                   @db.Uuid
+  notes             String?                   @db.VarChar(5000)
+  specifications    Json                      @default("{}")
+  rentalState       MachineRentalState        @default(NOT_RENTED)
+  serviceState      MachineServiceState       @default(NORMAL)
+  lifecycleState    MachineLifecycleState     @default(ACTIVE)
+  createdAt         DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                  @updatedAt @db.Timestamptz(3)
+  createdById       String                    @db.Uuid
+  updatedById       String                    @db.Uuid
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  model             MachineModel              @relation(fields: [organizationId, modelId], references: [organizationId, id], onDelete: Restrict)
+  branch            Branch?                   @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+  createdBy         User                      @relation("MachineCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy         User                      @relation("MachineUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+
   @@unique([organizationId, id])
   @@unique([organizationId, fleetNumberKey])
   @@index([organizationId, branchId, createdAt, id])
   @@index([organizationId, lifecycleState, createdAt, id])
+}
+
+enum RentalStatus {
+  DRAFT
+  QUOTED
+  RESERVED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RentalRateUnit {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  FIXED_PERIOD
+  MANUAL
+}
+
+model RentalCounter {
+  organizationId String       @db.Uuid
+  year           Int
+  value          Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@id([organizationId, year])
+}
+
+model Rental {
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @db.Uuid
+  number             String       @db.VarChar(40)
+  customerId         String       @db.Uuid
+  branchId           String?      @db.Uuid
+  status             RentalStatus @default(DRAFT)
+  notes              String?      @db.VarChar(5000)
+  plannedStartAt     DateTime?    @db.Timestamptz(3)
+  plannedEndAt       DateTime?    @db.Timestamptz(3)
+  actualStartAt      DateTime?    @db.Timestamptz(3)
+  actualEndAt        DateTime?    @db.Timestamptz(3)
+  cancelledAt        DateTime?    @db.Timestamptz(3)
+  cancellationReason String?      @db.VarChar(1000)
+  createdAt          DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime     @updatedAt @db.Timestamptz(3)
+  createdById        String       @db.Uuid
+  updatedById        String       @db.Uuid
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  customer           Customer     @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict)
+  branch             Branch?      @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+  createdBy          User         @relation("RentalCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy          User         @relation("RentalUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+  items              RentalItem[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, number])
+  @@index([organizationId, branchId, status, createdAt, id])
+  @@index([organizationId, customerId, createdAt, id])
+  @@index([organizationId, plannedStartAt, plannedEndAt])
+}
+
+model RentalItem {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  organizationId      String                    @db.Uuid
+  rentalId            String                    @db.Uuid
+  requestedCategoryId String?                   @db.Uuid
+  requestedModelId    String?                   @db.Uuid
+  quantity            Int                       @default(1)
+  specifications      Json                      @default("{}")
+  plannedStartAt      DateTime?                 @db.Timestamptz(3)
+  plannedEndAt        DateTime?                 @db.Timestamptz(3)
+  agreedRate          Decimal?                  @db.Decimal(30, 6)
+  rateUnit            RentalRateUnit?
+  currency            String?                   @db.Char(3)
+  commercialNotes     String?                   @db.VarChar(2000)
+  removedAt           DateTime?                 @db.Timestamptz(3)
+  rental              Rental                    @relation(fields: [organizationId, rentalId], references: [organizationId, id], onDelete: Restrict)
+  category            MachineCategory?          @relation(fields: [organizationId, requestedCategoryId], references: [organizationId, id], onDelete: Restrict)
+  model               MachineModel?             @relation(fields: [organizationId, requestedModelId], references: [organizationId, id], onDelete: Restrict)
+  assignments         RentalMachineAssignment[]
+  terms               RentalItemTerm[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, rentalId, id])
+  @@index([organizationId, rentalId, removedAt])
+  @@index([organizationId, plannedStartAt, plannedEndAt])
+}
+
+model RentalMachineAssignment {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @db.Uuid
+  itemId         String     @db.Uuid
+  machineId      String     @db.Uuid
+  assignedAt     DateTime   @default(now()) @db.Timestamptz(3)
+  releasedAt     DateTime?  @db.Timestamptz(3)
+  actualStartAt  DateTime?  @db.Timestamptz(3)
+  actualEndAt    DateTime?  @db.Timestamptz(3)
+  reason         String?    @db.VarChar(1000)
+  item           RentalItem @relation(fields: [organizationId, itemId], references: [organizationId, id], onDelete: Restrict)
+  machine        Machine    @relation(fields: [organizationId, machineId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, machineId, releasedAt, actualStartAt, actualEndAt])
+  @@index([organizationId, itemId])
+}
+
+model RentalItemTerm {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  itemId         String         @db.Uuid
+  plannedStartAt DateTime       @db.Timestamptz(3)
+  plannedEndAt   DateTime       @db.Timestamptz(3)
+  agreedRate     Decimal        @db.Decimal(30, 6)
+  rateUnit       RentalRateUnit
+  currency       String         @db.Char(3)
+  agreedAt       DateTime       @default(now()) @db.Timestamptz(3)
+  actorUserId    String         @db.Uuid
+  actor          User           @relation("RentalTermActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  item           RentalItem     @relation(fields: [organizationId, itemId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, itemId, agreedAt])
 }

@@ -1,3 +1,4 @@
+import { rentalCases } from './rentals.cases.mjs';
 import { machineCases } from './machines.cases.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -763,6 +764,13 @@ test(
           app = undefined;
         },
       );
+      await rentalCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
       await machineCases(suite, db, fixture, {
         Test,
         FoundationModule,

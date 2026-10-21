@@ -67,6 +67,18 @@ export class MachineController {
     const a = requestAccess(r);
     return this.service.update(a.principal, org, id, body, a.requestId);
   }
+  @Post(':machineId/restore')
+  @RequirePermission('machines.archive')
+  @Header('Cache-Control', 'no-store')
+  restore(
+    @Body() body: unknown,
+    @Req() r: object,
+    @Param('organizationId') org: string,
+    @Param('machineId') id: string,
+  ) {
+    const a = requestAccess(r);
+    return this.service.restore(a.principal, org, id, body, a.requestId);
+  }
   @Post(':machineId/archive')
   @RequirePermission('machines.archive')
   @Header('Cache-Control', 'no-store')

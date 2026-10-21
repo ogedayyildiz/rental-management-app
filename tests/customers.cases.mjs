@@ -1,5 +1,11 @@
+import {
+  createCustomerClient,
+  CustomerApiError,
+  customerEndpointAllowed,
+} from '../packages/api-client/dist/index.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { URLSearchParams } from 'node:url';
 import { CustomerService } from '../apps/api/dist/customers/customer.service.js';
 import { PrismaCustomerUnitOfWork } from '../apps/api/dist/infrastructure/prisma.customers.js';
 
@@ -725,6 +731,136 @@ export async function customerCases(suite, db, fixture, harness) {
             })
           ).status,
           409,
+        );
+      } finally {
+        await app.close();
+      }
+    },
+  );
+
+  await suite.test(
+    'Rental customer selector client returns active same-tenant customers for empty and matching search through authenticated HTTP',
+    async () => {
+      const t = await tenant(),
+        other = await tenant();
+      const first = await create(t, { displayName: 'Kiralama Test Alpha' }),
+        second = await create(t, { displayName: 'Örnek Kiralama Beta' }),
+        inactive = await create(t, { displayName: 'Kiralama Archived' });
+      await service.archive(
+        t.principal,
+        t.organization.id,
+        inactive.id,
+        randomUUID(),
+      );
+      await create(other, { displayName: 'Kiralama Other Tenant' });
+      await db.rolePermission.deleteMany({
+        where: { roleId: t.role.id, permissionKey: { not: 'customers.read' } },
+      });
+      await db.rolePermission.create({
+        data: {
+          organizationId: t.organization.id,
+          roleId: t.role.id,
+          permissionKey: 'rentals.create',
+        },
+      });
+      const module = await harness.Test.createTestingModule({
+        imports: [harness.FoundationModule],
+      })
+        .overrideProvider(harness.DATABASE)
+        .useValue(db)
+        .overrideProvider(harness.IdentityVerifier)
+        .useValue(new harness.TestVerifier())
+        .compile();
+      const app = module.createNestApplication({ logger: false });
+      try {
+        await app.listen(0, '127.0.0.1');
+        const base = await app.getUrl(),
+          headers = { authorization: 'Bearer test-' + t.user.id };
+        const client = createCustomerClient(base, (url, options) => {
+          const request = new URL(url);
+          assert.equal(
+            customerEndpointAllowed(options.method, request.pathname.slice(1)),
+            true,
+          );
+          return fetch(url, { ...options, headers });
+        });
+        // This is the old Create Rental request: strict query validation must continue rejecting it.
+        assert.equal(
+          (
+            await fetch(
+              base +
+                '/organizations/' +
+                t.organization.id +
+                '/customers?q=&active=true&limit=100',
+              { headers },
+            )
+          ).status,
+          400,
+        );
+        const page = await client.listActive(t.organization.id, '');
+        assert.equal(page.nextCursor, null);
+        assert.deepEqual(
+          new Set(page.items.map((c) => c.id)),
+          new Set([first.id, second.id]),
+        );
+        assert.ok(
+          page.items.every(
+            (c) => c.active && c.organizationId === t.organization.id,
+          ),
+        );
+        // Exact UI mapping: options use stable id and displayName, including Turkish text.
+        assert.deepEqual(
+          new Set(page.items.map((c) => c.displayName)),
+          new Set(['Kiralama Test Alpha', 'Örnek Kiralama Beta']),
+        );
+        assert.deepEqual(
+          (await client.listActive(t.organization.id, '  Alpha  ')).items.map(
+            (c) => c.id,
+          ),
+          [first.id],
+        );
+        assert.equal(
+          (await client.listActive(t.organization.id, 'Archived')).items.length,
+          0,
+        );
+        assert.equal(
+          (await client.listActive(t.organization.id, 'Other Tenant')).items
+            .length,
+          0,
+        );
+        const head = await client.list(
+          t.organization.id,
+          new URLSearchParams({ status: 'ACTIVE', limit: '1' }),
+        );
+        assert.ok(head.nextCursor);
+        const tail = await client.listActive(
+          t.organization.id,
+          '',
+          head.nextCursor,
+        );
+        assert.equal(tail.items.length, 1);
+        assert.notEqual(tail.items[0].id, head.items[0].id);
+        await assert.rejects(
+          client.listActive(other.organization.id, ''),
+          (e) => e instanceof CustomerApiError && e.status === 403,
+        );
+        await db.rolePermission.deleteMany({
+          where: { roleId: t.role.id, permissionKey: 'customers.read' },
+        });
+        await assert.rejects(
+          client.listActive(t.organization.id, ''),
+          (e) => e instanceof CustomerApiError && e.status === 403,
+        );
+        assert.equal(
+          (
+            await fetch(
+              base +
+                '/organizations/' +
+                t.organization.id +
+                '/customers?status=ACTIVE',
+            )
+          ).status,
+          401,
         );
       } finally {
         await app.close();

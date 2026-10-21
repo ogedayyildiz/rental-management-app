@@ -1,7 +1,9 @@
+import { rentalMessages } from './rentals.js';
 import { machineMessages } from './machines.js';
 import { customerMessages } from './customers.js';
 export const messages = {
   en: {
+    ...rentalMessages.en,
     ...customerMessages.en,
     ...machineMessages.en,
     'auth.login': 'Log in',
@@ -19,6 +21,7 @@ export const messages = {
       'The workspace is ready. Business features will be added in the next phase.',
   },
   tr: {
+    ...rentalMessages.tr,
     ...customerMessages.tr,
     ...machineMessages.tr,
     'auth.login': 'Giriş yap',

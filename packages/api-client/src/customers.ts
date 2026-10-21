@@ -4,6 +4,7 @@ import {
   contactListSchema,
   contactViewSchema,
   customerPageSchema,
+  customerSearchSchema,
   customerViewSchema,
 } from '@rental/validation';
 import type {
@@ -63,6 +64,26 @@ export function createCustomerClient(
   const item = (org: string, id: string) =>
     `${root(org)}/${encodeURIComponent(id)}`;
   return {
+    // Rental selectors consume the Customer search contract, not persistence's boolean active field.
+    listActive: (org: string, q = '', cursor?: string) => {
+      const query = customerSearchSchema.parse({
+        q,
+        status: 'ACTIVE',
+        limit: 100,
+        ...(cursor ? { cursor } : {}),
+      });
+      return request(
+        `${root(org)}?${new URLSearchParams({
+          q: query.q,
+          status: query.status,
+          limit: String(query.limit),
+          ...(query.cursor ? { cursor: query.cursor } : {}),
+        })}`,
+        'GET',
+        undefined,
+        customerPageSchema.parse,
+      );
+    },
     list: (org: string, query: URLSearchParams) =>
       request(
         `${root(org)}?${query}`,

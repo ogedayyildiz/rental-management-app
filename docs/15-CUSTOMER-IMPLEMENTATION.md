@@ -108,6 +108,14 @@ navigation, creation, details, editing, archive, contacts and addresses. Control
 follow permissions; backend enforcement remains authoritative. English and Turkish
 text uses shared translation keys. No mobile Customer-management screen was added.
 
+The Rental Create/Edit screen also reuses this Customer form and creation API.
+It requires customers.create, retains the rental draft, prefills the customer name
+from search text and selects the successfully created Customer immediately.
+Creation remains an independent audited Customer transaction; abandoning the
+rental does not delete the Customer. Customer lookup still requires customers.read
+and returns active same-tenant results via listActive, including an empty search.
+See [Rental implementation](17-RENTAL-IMPLEMENTATION.md#create-a-customer-while-preparing-a-rental).
+
 Run `pnpm db:migrate`, `pnpm db:seed`, `pnpm test`, `pnpm lint`,
 `pnpm typecheck`, `pnpm format:check`, and `pnpm build`.
 Tests cover HTTP authorization, tenant and parent substitution, identifier conflicts,

@@ -76,3 +76,4 @@ export const auditMetadataSchema = z.strictObject({
     .optional(),
 });
 export * from './machines.js';
+export * from './rentals.js';

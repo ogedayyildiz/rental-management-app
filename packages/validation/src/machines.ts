@@ -159,3 +159,11 @@ export const machineAccessSchema = z.object({
     }),
   ),
 });
+
+export const machineRestoreSchema = z.strictObject({
+  reasonCode: z.enum([
+    'INCORRECT_SALE',
+    'INCORRECT_RETIREMENT',
+    'RETURNED_TO_FLEET',
+  ]),
+});

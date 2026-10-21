@@ -7,6 +7,7 @@ import {
   machineServiceStateSchema,
   machineRentalStateSchema,
   machineLifecycleStateSchema,
+  machineRestoreSchema,
 } from '@rental/validation';
 import type { MachineView, MachinePage } from '@rental/validation';
 import { translate } from '@rental/i18n';
@@ -41,6 +42,7 @@ export function MachineWorkspace({
     [form, setForm] = useState(false),
     [busy, setBusy] = useState(true),
     [error, setError] = useState<TranslationKey | null>(null),
+    [restoreReason, setRestoreReason] = useState('INCORRECT_SALE'),
     [query, setQuery] = useState(''),
     [cursors, setCursors] = useState<string[]>([]);
   const epoch = useRef(0),
@@ -49,9 +51,16 @@ export function MachineWorkspace({
     can = (p: string) => access?.permissions.includes(p) ?? false;
   const fail = useCallback((e: unknown) => {
     setError(
-      e instanceof MachineApiError && e.status === 409
-        ? 'machines.conflict'
-        : 'machines.error',
+      e instanceof MachineApiError && e.code === 'MACHINE_COMMITTED'
+        ? 'machines.committed'
+        : e instanceof MachineApiError && e.code === 'MACHINE_ARCHIVED'
+          ? 'machines.archivedEdit'
+          : e instanceof MachineApiError &&
+              e.code === 'MACHINE_COMMITMENT_CONFLICT'
+            ? 'machines.commitmentConflict'
+            : e instanceof MachineApiError && e.status === 409
+              ? 'machines.conflict'
+              : 'machines.error',
     );
   }, []);
   const load = useCallback(
@@ -139,6 +148,22 @@ export function MachineWorkspace({
     setError(null);
     try {
       setDetail(await api.archive(org, detail.id, state));
+      setCursors([]);
+      await load(org, query);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function restore() {
+    if (!detail || !window.confirm(t('machines.restoreConfirm'))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setDetail(
+        await api.restore(org, detail.id, { reasonCode: restoreReason }),
+      );
       setCursors([]);
       await load(org, query);
     } catch (e) {
@@ -236,6 +261,30 @@ export function MachineWorkspace({
               <section className="machine-panel">
                 <div className="machine-actions">
                   <Link href="/machines">{t('machines.back')}</Link>
+                  {detail.lifecycleState !== 'ACTIVE' &&
+                    can('machines.archive') && (
+                      <>
+                        <label>
+                          {t('machines.restoreReason')}
+                          <select
+                            value={restoreReason}
+                            disabled={busy}
+                            onChange={(e) => setRestoreReason(e.target.value)}
+                          >
+                            {machineRestoreSchema.shape.reasonCode.options.map(
+                              (reason) => (
+                                <option key={reason} value={reason}>
+                                  {t(`machines.${reason}`)}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </label>
+                        <button disabled={busy} onClick={() => void restore()}>
+                          {t('machines.restore')}
+                        </button>
+                      </>
+                    )}
                   {detail.lifecycleState === 'ACTIVE' &&
                     can('machines.update') && (
                       <button disabled={busy} onClick={() => setForm(true)}>

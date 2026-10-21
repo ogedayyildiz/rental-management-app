@@ -17,6 +17,7 @@ export interface MachineRepository {
     id: string | null,
     input: MachineInput,
   ): Promise<MachineView>;
+  restore(context: TenantContext, id: string): Promise<MachineView>;
   archive(
     context: TenantContext,
     id: string,
@@ -24,6 +25,14 @@ export interface MachineRepository {
   ): Promise<MachineView>;
 }
 export interface MachineRepositories {
+  commitments: {
+    lock(context: TenantContext): Promise<void>;
+    validate(
+      context: TenantContext,
+      before: MachineView,
+      after: MachineView,
+    ): Promise<void>;
+  };
   access: AccessRepository;
   machines: MachineRepository;
   audit: AuditRepository;

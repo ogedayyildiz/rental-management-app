@@ -490,6 +490,20 @@ Normally this requires:
 - any required commercial closure completed.
 Machine inspection or maintenance may continue after the rental itself has been completed.
 
+For the current implementation, return and completion are deliberately separate
+actions. Return records each physical machine's actual return; partial returns
+leave the rental open. Once the entire requested quantity has been returned,
+an authorized user explicitly completes the rental. Returning the last machine
+does not automatically complete it. An unassigned outstanding quantity also
+prevents completion.
+
+Completion is operational closure, not confirmation of payment. It must not be
+interpreted as PAID or financial settlement. Invoicing and payment tracking are
+outside the current implementation. Early return and completion are permitted:
+the planned end date is not a waiting period. Actual returns must be at or after
+dispatch and cannot be future-dated. See
+[Rental implementation](17-RENTAL-IMPLEMENTATION.md) for current endpoint and UI behavior.
+
 # 25. Return Process
 Returning a machine is separate from completing the entire rental.
 A return should record:

@@ -65,7 +65,7 @@ export async function machineCases(suite, db, fixture, h) {
       assert.equal(retired.rentalState, 'NOT_RENTED');
       await archive(t, row.id);
       await assert.rejects(update(t, row.id, { notes: 'No' }), {
-        code: 'CONFLICT',
+        code: 'MACHINE_ARCHIVED',
       });
       assert.equal(
         (await service.list(t.principal, t.organization.id, {})).items.length,
@@ -187,6 +187,16 @@ export async function machineCases(suite, db, fixture, h) {
       );
       await assert.rejects(
         service.get(t.principal, t.organization.id, hidden.id),
+        { code: 'NOT_FOUND' },
+      );
+      await assert.rejects(
+        service.restore(
+          t.principal,
+          t.organization.id,
+          hidden.id,
+          { reasonCode: 'INCORRECT_SALE' },
+          randomUUID(),
+        ),
         { code: 'NOT_FOUND' },
       );
       await assert.rejects(update(t, hidden.id, { branchId: t.branch.id }), {
@@ -384,7 +394,114 @@ export async function machineCases(suite, db, fixture, h) {
         where: { id: row.id },
         data: { rentalState: 'RENTED' },
       });
-      await assert.rejects(archive(t, row.id), { code: 'CONFLICT' });
+      await assert.rejects(archive(t, row.id), { code: 'MACHINE_COMMITTED' });
+    },
+  );
+  await suite.test(
+    'restore sold/retired machines is scoped, authorized, audited and idempotent',
+    async () => {
+      const t = await tenant(),
+        other = await tenant();
+      for (const lifecycleState of ['SOLD', 'RETIRED']) {
+        const row = await create(t, {
+          serviceState: 'OUT_OF_SERVICE',
+          branchId: t.branch.id,
+        });
+        await archive(t, row.id, { lifecycleState });
+        const body = {
+          reasonCode:
+            lifecycleState === 'SOLD'
+              ? 'INCORRECT_SALE'
+              : 'INCORRECT_RETIREMENT',
+        };
+        await assert.rejects(
+          service.restore(
+            other.principal,
+            other.organization.id,
+            row.id,
+            body,
+            randomUUID(),
+          ),
+          { code: 'NOT_FOUND' },
+        );
+        await assert.rejects(
+          service.restore(
+            t.principal,
+            t.organization.id,
+            row.id,
+            {},
+            randomUUID(),
+          ),
+          { code: 'INVALID_INPUT' },
+        );
+        const restored = await service.restore(
+          t.principal,
+          t.organization.id,
+          row.id,
+          body,
+          randomUUID(),
+        );
+        assert.equal(restored.lifecycleState, 'ACTIVE');
+        assert.equal(restored.serviceState, 'OUT_OF_SERVICE');
+        assert.equal(restored.rentalState, 'NOT_RENTED');
+        await service.restore(
+          t.principal,
+          t.organization.id,
+          row.id,
+          body,
+          randomUUID(),
+        );
+        const audits = await db.auditEvent.findMany({
+          where: { targetId: row.id, action: 'MACHINE_RESTORED' },
+        });
+        assert.equal(audits.length, 1);
+        assert.equal(audits[0].metadata.reasonCode, body.reasonCode);
+        assert.equal(audits[0].metadata.previousState, lifecycleState);
+        await archive(t, row.id, { lifecycleState });
+        const broken = new MachineService({
+          run: (work) =>
+            unit.run((r) =>
+              work({
+                ...r,
+                audit: {
+                  append: async () => {
+                    throw new Error('audit unavailable');
+                  },
+                },
+              }),
+            ),
+        });
+        await assert.rejects(
+          broken.restore(
+            t.principal,
+            t.organization.id,
+            row.id,
+            body,
+            randomUUID(),
+          ),
+          /audit unavailable/,
+        );
+        assert.equal(
+          (await service.get(t.principal, t.organization.id, row.id))
+            .lifecycleState,
+          lifecycleState,
+        );
+      }
+      const row = await create(t);
+      await archive(t, row.id);
+      await db.rolePermission.deleteMany({
+        where: { roleId: t.role.id, permissionKey: 'machines.archive' },
+      });
+      await assert.rejects(
+        service.restore(
+          t.principal,
+          t.organization.id,
+          row.id,
+          { reasonCode: 'INCORRECT_RETIREMENT' },
+          randomUUID(),
+        ),
+        { code: 'ACCESS_DENIED' },
+      );
     },
   );
   await suite.test(
@@ -590,6 +707,46 @@ export async function machineCases(suite, db, fixture, h) {
           ).status,
           201,
         );
+        const restoreUrl = root + '/' + row.id + '/restore';
+        assert.equal(
+          (
+            await fetch(restoreUrl, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ reasonCode: 'INCORRECT_SALE' }),
+            })
+          ).status,
+          401,
+        );
+        assert.equal(
+          (
+            await fetch(restoreUrl, {
+              method: 'POST',
+              headers: {
+                ...headers,
+                authorization: 'Bearer test-' + other.user.id,
+              },
+              body: JSON.stringify({ reasonCode: 'INCORRECT_SALE' }),
+            })
+          ).status,
+          403,
+        );
+        const archivedEdit = await fetch(root + '/' + row.id, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ model: 'Correction' }),
+        });
+        assert.equal(archivedEdit.status, 409);
+        assert.equal((await archivedEdit.json()).code, 'MACHINE_ARCHIVED');
+        const restored = await fetch(restoreUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ reasonCode: 'INCORRECT_SALE' }),
+        });
+        assert.equal(restored.status, 201);
+        const restoredBody = await restored.json();
+        assert.equal(restoredBody.lifecycleState, 'ACTIVE');
+        assert.ok(!('acquisitionCost' in restoredBody));
       } finally {
         await app.close();
       }

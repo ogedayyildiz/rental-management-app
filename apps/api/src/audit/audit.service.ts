@@ -7,12 +7,27 @@ export interface AuditRecord {
   actorUserId: string;
   actorType: 'USER';
   action:
+    | 'RENTAL_CREATED'
+    | 'RENTAL_UPDATED'
+    | 'RENTAL_CUSTOMER_CHANGED'
+    | 'RENTAL_BRANCH_CHANGED'
+    | 'RENTAL_TERMS_CHANGED'
+    | 'RENTAL_MACHINE_ASSIGNED'
+    | 'RENTAL_MACHINE_RELEASED'
+    | 'RENTAL_QUOTED'
+    | 'RENTAL_RESERVED'
+    | 'RENTAL_DISPATCHED'
+    | 'RENTAL_MACHINES_RETURNED'
+    | 'RENTAL_COMPLETED'
+    | 'RENTAL_CANCELLED'
+    | 'RENTAL_EXTENDED'
     | 'MACHINE_CREATED'
     | 'MACHINE_UPDATED'
     | 'MACHINE_BRANCH_CHANGED'
     | 'MACHINE_SERVICE_STATE_CHANGED'
     | 'MACHINE_LIFECYCLE_CHANGED'
     | 'MACHINE_ARCHIVED'
+    | 'MACHINE_RESTORED'
     | 'BRANCH_UPDATED'
     | 'CUSTOMER_CREATED'
     | 'CUSTOMER_UPDATED'
@@ -22,12 +37,20 @@ export interface AuditRecord {
     | 'CUSTOMER_ADDRESS_CREATED'
     | 'CUSTOMER_ADDRESS_UPDATED';
   targetType:
-    'Machine' | 'Branch' | 'Customer' | 'CustomerContact' | 'CustomerAddress';
+    | 'Rental'
+    | 'Machine'
+    | 'Branch'
+    | 'Customer'
+    | 'CustomerContact'
+    | 'CustomerAddress';
   targetId: string;
   result: 'SUCCESS';
   source: 'api';
   requestId: string;
   metadata: {
+    reasonCode?: string;
+    previousModelId?: string;
+    nextModelId?: string;
     previousBranchId?: string | null;
     nextBranchId?: string | null;
     previousState?: string;

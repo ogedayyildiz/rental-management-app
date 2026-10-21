@@ -2,9 +2,13 @@ import {
   machinePageSchema,
   machineViewSchema,
   machineBranchListSchema,
+  machineRestoreSchema,
 } from '@rental/validation';
 export class MachineApiError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly code?: string,
+  ) {
     super(`MACHINE_API_${status}`);
   }
 }
@@ -13,7 +17,9 @@ export function machineEndpointAllowed(method: string, path: string): boolean {
   if (method === 'GET')
     return new RegExp(`^${root}(?:/(?:branches|[0-9a-f-]{36}))?$`).test(path);
   if (method === 'POST')
-    return new RegExp(`^${root}(?:/[0-9a-f-]{36}/archive)?$`).test(path);
+    return new RegExp(`^${root}(?:/[0-9a-f-]{36}/(?:archive|restore))?$`).test(
+      path,
+    );
   if (method === 'PATCH')
     return new RegExp(`^${root}/[0-9a-f-]{36}$`).test(path);
   return false;
@@ -38,7 +44,22 @@ export function createMachineClient(
             body: JSON.stringify(body),
           }),
     });
-    if (!response.ok) throw new MachineApiError(response.status);
+    if (!response.ok) {
+      const body: unknown = await response.json().catch(() => null);
+      const code =
+        body &&
+        typeof body === 'object' &&
+        'code' in body &&
+        typeof body.code === 'string' &&
+        [
+          'MACHINE_COMMITTED',
+          'MACHINE_ARCHIVED',
+          'MACHINE_COMMITMENT_CONFLICT',
+        ].includes(body.code)
+          ? body.code
+          : undefined;
+      throw new MachineApiError(response.status, code);
+    }
     return parse(await response.json());
   }
   const root = (org: string) =>
@@ -61,6 +82,13 @@ export function createMachineClient(
       request(root(org), 'POST', body, machineViewSchema.parse),
     update: (org: string, id: string, body: unknown) =>
       request(item(org, id), 'PATCH', body, machineViewSchema.parse),
+    restore: (org: string, id: string, body: unknown) =>
+      request(
+        `${item(org, id)}/restore`,
+        'POST',
+        machineRestoreSchema.parse(body),
+        machineViewSchema.parse,
+      ),
     archive: (org: string, id: string, lifecycleState: 'RETIRED' | 'SOLD') =>
       request(
         `${item(org, id)}/archive`,

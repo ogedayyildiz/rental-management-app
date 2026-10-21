@@ -50,6 +50,12 @@ export class AccessError extends Error {
       | 'ACCESS_DENIED'
       | 'NOT_FOUND'
       | 'INVALID_INPUT'
+      | 'RENTAL_CONFLICT'
+      | 'MACHINE_INELIGIBLE'
+      | 'MACHINE_ARCHIVED'
+      | 'MACHINE_COMMITTED'
+      | 'MACHINE_COMMITMENT_CONFLICT'
+      | 'INVALID_TRANSITION'
       | 'CONFLICT'
       | 'INACTIVE_CUSTOMER',
   ) {

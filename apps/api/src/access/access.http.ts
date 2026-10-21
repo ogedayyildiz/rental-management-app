@@ -113,6 +113,12 @@ export class SafeErrorFilter implements ExceptionFilter {
         NOT_FOUND: 404,
         INVALID_INPUT: 400,
         CONFLICT: 409,
+        RENTAL_CONFLICT: 409,
+        MACHINE_INELIGIBLE: 409,
+        MACHINE_ARCHIVED: 409,
+        MACHINE_COMMITTED: 409,
+        MACHINE_COMMITMENT_CONFLICT: 409,
+        INVALID_TRANSITION: 409,
         INACTIVE_CUSTOMER: 409,
       }[exception.code];
     } else if (exception instanceof HttpException) {

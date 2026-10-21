@@ -3,6 +3,7 @@ import {
   machinePatchSchema,
   machineSearchSchema,
   machineArchiveSchema,
+  machineRestoreSchema,
   identifierSchema,
 } from '@rental/validation';
 import type { MachineView } from '@rental/validation';
@@ -114,8 +115,10 @@ export class MachineService {
     requestId: string,
   ) {
     return this.run(p, o, 'machines.update', async (r, c) => {
+      await r.commitments.lock(c);
       const before = await this.find(r, c, id);
-      if (before.lifecycleState !== 'ACTIVE') throw new AccessError('CONFLICT');
+      if (before.lifecycleState !== 'ACTIVE')
+        throw new AccessError('MACHINE_ARCHIVED');
       const patch = parseInput(machinePatchSchema, body);
       if ('acquisitionCost' in patch || 'currency' in patch)
         requirePermission(c, 'finance.acquisition_cost.edit');
@@ -125,7 +128,11 @@ export class MachineService {
       });
       await r.machines.requireBranch(c, input.branchId);
       const row = await r.machines.save(c, before.id, input);
-      await this.audit(r, c, requestId, row.id, 'MACHINE_UPDATED');
+      await r.commitments.validate(c, before, row);
+      await this.audit(r, c, requestId, row.id, 'MACHINE_UPDATED', {
+        previousModelId: before.modelId,
+        nextModelId: row.modelId,
+      });
       if (before.branchId !== row.branchId)
         await this.audit(r, c, requestId, row.id, 'MACHINE_BRANCH_CHANGED', {
           previousBranchId: before.branchId,
@@ -143,6 +150,30 @@ export class MachineService {
       return this.visible(c, row);
     });
   }
+  restore(
+    p: AuthenticatedPrincipal,
+    o: unknown,
+    id: unknown,
+    body: unknown,
+    requestId: string,
+  ) {
+    return this.run(p, o, 'machines.archive', async (r, c) => {
+      const input = parseInput(machineRestoreSchema, body);
+      await r.commitments.lock(c);
+      const before = await this.find(r, c, id);
+      if (before.lifecycleState === 'ACTIVE') return this.visible(c, before);
+      if (before.rentalState !== 'NOT_RENTED')
+        throw new AccessError('MACHINE_COMMITTED');
+      await r.machines.requireBranch(c, before.branchId);
+      const row = await r.machines.restore(c, before.id);
+      await this.audit(r, c, requestId, row.id, 'MACHINE_RESTORED', {
+        previousState: before.lifecycleState,
+        nextState: row.lifecycleState,
+        reasonCode: input.reasonCode,
+      });
+      return this.visible(c, row);
+    });
+  }
   archive(
     p: AuthenticatedPrincipal,
     o: unknown,
@@ -152,6 +183,7 @@ export class MachineService {
   ) {
     return this.run(p, o, 'machines.archive', async (r, c) => {
       const input = parseInput(machineArchiveSchema, body);
+      await r.commitments.lock(c);
       const before = await this.find(r, c, id);
       if (before.lifecycleState === input.lifecycleState)
         return this.visible(c, before);
@@ -159,8 +191,13 @@ export class MachineService {
         before.lifecycleState !== 'ACTIVE' ||
         before.rentalState !== 'NOT_RENTED'
       )
-        throw new AccessError('CONFLICT');
+        throw new AccessError(
+          before.rentalState !== 'NOT_RENTED'
+            ? 'MACHINE_COMMITTED'
+            : 'MACHINE_ARCHIVED',
+        );
       const row = await r.machines.archive(c, before.id, input.lifecycleState);
+      await r.commitments.validate(c, before, row);
       await this.audit(r, c, requestId, row.id, 'MACHINE_LIFECYCLE_CHANGED', {
         previousState: before.lifecycleState,
         nextState: row.lifecycleState,

@@ -14,9 +14,9 @@ Ownership is optional: OWNED, LEASED, THIRD_PARTY. Unknown ownership stays null;
 
 ## State dimensions
 
-- Rental: NOT_RENTED, RESERVED, RENTED. New machines start NOT_RENTED. Clients cannot write rental state in this phase; future Rental workflows own it.
+- Rental: NOT_RENTED, RESERVED, RENTED. New machines start NOT_RENTED. Clients cannot write rental state; the Rental workflows now own its transactional projection. See [Rental implementation](17-RENTAL-IMPLEMENTATION.md).
 - Service: NORMAL, MAINTENANCE_DUE, MAINTENANCE_REQUIRED, OUT_OF_SERVICE, SERVICE_BLOCKED. Defaults to NORMAL; authorized Machine updates may explicitly change it, with a dedicated audit event. No maintenance scheduling, work orders or inferred repair completion exist yet.
-- Lifecycle: ACTIVE, SOLD, RETIRED. New assets start ACTIVE. The archive endpoint transitions ACTIVE to SOLD or RETIRED. It rejects reserved/rented machines and does not change rental/service state. Repeating the same archive is idempotent. Sold/retired machines remain readable and cannot be edited or restored through this initial API.
+- Lifecycle: ACTIVE, SOLD, RETIRED. New assets start ACTIVE. The archive endpoint transitions ACTIVE to SOLD or RETIRED. It rejects reserved/rented machines and does not change rental/service state. Repeating the same archive is idempotent. Sold/retired machines remain readable and cannot be edited until explicitly restored through the audited restore action.
 
 There is no generic status or authoritative availability flag. NOT_RENTED is not a promise of availability. Connectivity and operational states are absent rather than fabricated. The specific Domain Model and ADR-007 terms are used; the rental document's illustrative DECOMMISSIONED wording is not introduced as a competing lifecycle value.
 
@@ -74,6 +74,7 @@ Base: `/organizations/:organizationId/machines`.
 | GET | /:machineId | Detail |
 | POST | / | Create |
 | PATCH | /:machineId | Update supplied fields |
+| POST | /:machineId/restore | Restore SOLD/RETIRED to ACTIVE with a required reasonCode; requires machines.archive |
 | POST | /:machineId/archive | Body `{ "lifecycleState": "RETIRED" }` or SOLD; defaults to RETIRED |
 
 List query: q, fleetNumber, manufacturer, model, serialNumber, category, branchId, lifecycleState (ACTIVE default or SOLD/RETIRED/ALL), rentalState, serviceState, limit and cursor. Text filters are case-insensitive contains matches and combine with the other filters. Cursor pagination follows Customers: createdAt/id descending, default 25 and maximum 100 rows, nextCursor passed unchanged with the same filters; no total count.
@@ -117,3 +118,49 @@ Run `pnpm db:migrate`, `pnpm db:seed`, `pnpm test`, `pnpm lint`, `pnpm typecheck
 - [ADR-008](decisions/ADR-008-PERMISSION-BASED-AUTHORIZATION.md).
 
 No architectural replacement or additional ADR is introduced.
+
+## Corrections and restoration (2026-10-21)
+
+Reserved/rented is no longer a blanket edit lock. Descriptive corrections use the
+existing machines.update permission and transaction. Model changes resolve a new
+or existing tenant catalog identity for this physical asset; they never rename a
+shared model or rewrite a RentalItem's requested model. MACHINE_UPDATED records
+previousModelId and nextModelId; old catalog records and assignment IDs remain.
+
+Branch, model/category and static specification edits must preserve committed
+Rental requirements. Validation reuses Rental matching and scheduling rules,
+including unallocated category/model capacity. Compatible edits are allowed;
+changes that invalidate a commitment roll back with MACHINE_COMMITMENT_CONFLICT.
+An exact-model booking still requires that identity; changing its commercial
+requirement is not inferred from editing the asset. Notes, identifiers and
+financial corrections keep existing permissions. Service-state updates remain
+possible so an actual breakdown can be recorded even during rental.
+
+Machine updates/archive/restore share Rental's organization scheduling lock in a
+Serializable transaction. Concurrent reservation and incompatible asset changes
+cannot both commit. Archive checks assigned commitments and unallocated capacity.
+Errors expose only stable codes, never other branches' rental/customer details.
+
+POST /organizations/:organizationId/machines/:machineId/restore takes one of:
+INCORRECT_SALE, INCORRECT_RETIREMENT, RETURNED_TO_FLEET as reasonCode. The existing
+machines.archive permission authorizes lifecycle restoration; PlatformAccess does
+not. The UI asks for the reason and confirmation. Restoration sets only lifecycle
+ACTIVE and updater metadata, preserves service/rental states and all history,
+requires authorized active branch access, and writes MACHINE_RESTORED with prior
+state, new state and reason. Audit failure rolls back. Repetition on ACTIVE is an
+idempotent no-op. No migration, new permission grant or manual database fix is needed.
+
+The web displays distinct messages for archived assets (restore first), sale or
+retirement blocked by assigned rentals, and edits that invalidate commitments.
+
+Correcting an asset's model can leave the previous catalog entry with no machines.
+That entry is retained for historical RentalItem references. The Rental catalog
+marks whether a model has an ACTIVE asset in the caller's branch scope; new-rental
+model choices exclude entries without such assets, while existing selections and
+historical labels remain readable. This is not date-specific availability.
+
+Rental requirements can now ask for minimum platformHeightM. Record the actual
+static platform height on the Machine: missing heights cannot satisfy a numeric
+requirement and are never inferred from model names or working height. Rental
+reservation and assignment reuse the same specification matching rules. See
+[Rental implementation](17-RENTAL-IMPLEMENTATION.md#platform-height-requirements-and-model-choices).

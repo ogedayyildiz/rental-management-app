@@ -4,7 +4,7 @@ Multi-tenant SaaS platform for equipment rental management, fleet operations, ma
 
 > **Project status:** Customer and Machine management implemented.
 >
-> Real Auth0 web authentication, platform bootstrap, two-user tenant onboarding and Customer management are manually verified. Machines now have a tenant/branch-scoped API and English/Turkish web interface at `/machines`, ready for the real tenant smoke test. Other product domains remain deferred; real mobile login verification remains separate.
+> Real Auth0 web authentication, platform bootstrap, two-user tenant onboarding and Customer management are manually verified. Machines are manually verified. Rental/reservation/contract management adds tenant/branch-scoped workflows and an English/Turkish interface at `/rentals`; see [implementation and smoke-test guide](docs/17-RENTAL-IMPLEMENTATION.md). Other product domains remain deferred; real mobile login verification remains separate.
 
 See [Machine implementation and smoke test](docs/16-MACHINE-IMPLEMENTATION.md) for state dimensions, branch scope, specifications and acquisition-cost permissions.
 
@@ -786,5 +786,5 @@ Testing and Deployment
 ```
 
 The database/migration, tenant-context, permission and audit foundation is in place.
-OIDC integration and invitation/administration workflows require a separately
-authorized phase before operational business domains.
+Auth0, invitation/administration, Customers and Machines are implemented.
+Rental workflows are documented in `docs/17-RENTAL-IMPLEMENTATION.md`.
