@@ -2,9 +2,9 @@
 
 Multi-tenant SaaS platform for equipment rental management, fleet operations, maintenance, telemetry, GPS tracking, CAN-based machine data, remote machine actions, financial analytics, documents, and reporting.
 
-> **Project status:** Customer and Machine management implemented.
+> **Project status:** Customers, Machines, Rentals, Maintenance and simulator-backed Telemetry Phase 1 implemented.
 >
-> Real Auth0 web authentication, platform bootstrap, two-user tenant onboarding and Customer management are manually verified. Machines are manually verified. Rental/reservation/contract management adds tenant/branch-scoped workflows and an English/Turkish interface at `/rentals`; see [implementation and smoke-test guide](docs/17-RENTAL-IMPLEMENTATION.md). Other product domains remain deferred; real mobile login verification remains separate.
+> Real Auth0 web authentication, platform bootstrap, two-user tenant onboarding, Customers, Machines and Rentals have real-tenant browser verification. [Hosted CI](docs/19-E2E-TESTING.md#hosted-verification-2026-11-18) passed 111 unit/integration tests and 19 browser scenarios, including Maintenance plans and simulator-backed Telemetry. See the [Maintenance](docs/18-MAINTENANCE-IMPLEMENTATION.md) and [Telemetry](docs/20-TELEMETRY-FOUNDATION.md) implementation guides. Real telemetry hardware/provider access, production ingress and real mobile login remain separate verification gates. Finance implementation is pending an explicit rental-value calculation policy; see [Finance preparation](docs/21-FINANCE-ANALYTICS-IMPLEMENTATION.md).
 
 See [Machine implementation and smoke test](docs/16-MACHINE-IMPLEMENTATION.md) for state dimensions, branch scope, specifications and acquisition-cost permissions.
 

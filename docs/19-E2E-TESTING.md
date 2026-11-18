@@ -161,3 +161,18 @@ If Chromium is missing on a clean workstation, run pnpm exec playwright install 
 The original 17 scenarios were run successfully before applying the local device migration.
 Telemetry scenarios use real ingestion with the isolated database, a short test-only
 freshness interval and the packaged MapLibre worker/outline map.
+
+## Hosted verification (2026-11-18)
+
+GitHub Actions [run 44256519656](https://github.com/ogedayyildiz/rental-management-app/actions/runs/44256519656)
+passed on `codex/verify-telemetry-ci` at `2bdeaea4ff097cbdb1512338c61488a9d12f900c`.
+The Ubuntu runner executed 111 unit/integration/security tests (zero failures or skips),
+all 19 Chromium scenarios (no retries), lint, strict TypeScript, formatting and the full
+workspace build. Its TimescaleDB/PostgreSQL and Redis services initialized successfully.
+The browser-diagnostics artifact contains the report, results and server log with seven-day
+retention. Future failures retain traces/screenshots through the same always-run upload.
+
+Clean-run setup selects Node 24 before installing the pinned pnpm version. No local
+environment files or Auth0 credentials are needed. This verifies hosted CI, not real
+provider hardware, production ingress, or a production deployment. Existing pg/action
+runtime deprecation warnings were non-failing; tests and assertions were not weakened.

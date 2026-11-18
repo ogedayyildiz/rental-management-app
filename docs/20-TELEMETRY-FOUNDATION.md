@@ -127,5 +127,11 @@ battery selection, fault appearance/clear, offline display, device installation/
 and tenant/branch denial. Lint, strict TypeScript, formatting and full build passed.
 Simulated events and device registrations used disposable databases only.
 
-Not verified: real Ruptela hardware/protocol, real Xtellio cloud/API, production ingress
-deployment, or hosted CI execution. The canonical fixture adapters are not vendor decoders.
+Not verified at that date: real Ruptela hardware/protocol, real Xtellio cloud/API,
+production ingress deployment, or hosted CI execution. The canonical fixture adapters
+are not vendor decoders.
+
+Hosted CI subsequently passed on 2026-11-18: 111 unit/integration tests, 19 Playwright
+scenarios, lint, strict TypeScript, formatting and full build. See
+[the hosted verification record](19-E2E-TESTING.md#hosted-verification-2026-11-18).
+Real-provider and production-ingress verification remain blocked by the access gate above.
