@@ -16,3 +16,4 @@ export function createDatabase(connectionString: unknown): PrismaClient {
     log: [],
   });
 }
+export { resolveDeviceInstallation } from './device-installations.js';

@@ -22,3 +22,5 @@ Thumbs.db
 *.tfvars
 !*.tfvars.example
 packages/database/src/generated/
+.e2e/
+/apps/web/public/map/

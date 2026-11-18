@@ -164,3 +164,11 @@ static platform height on the Machine: missing heights cannot satisfy a numeric
 requirement and are never inferred from model names or working height. Rental
 reservation and assignment reuse the same specification matching rules. See
 [Rental implementation](17-RENTAL-IMPLEMENTATION.md#platform-height-requirements-and-model-choices).
+
+## Maintenance ownership (2026-10-21)
+
+The Maintenance phase supersedes the temporary manual service-state editing described
+above. Machine create starts NORMAL; generic updates cannot change serviceState.
+Existing non-NORMAL states are preserved as audited technical restrictions.
+Authorized block/release actions and work orders now own that projection. See
+[Maintenance implementation](18-MAINTENANCE-IMPLEMENTATION.md#service-state-ownership-and-restrictions).

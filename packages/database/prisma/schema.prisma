@@ -52,6 +52,11 @@ enum AuditResult {
 }
 
 model Organization {
+  trackingDevices     TrackingDevice[]
+  workOrders          WorkOrder[]
+  maintenancePlans    MaintenancePlan[]
+  maintenanceCounters MaintenanceCounter[]
+
   rentals           Rental[]
   rentalCounters    RentalCounter[]
   id                String                   @id @default(uuid()) @db.Uuid
@@ -76,6 +81,12 @@ model Organization {
 }
 
 model User {
+  createdWorkOrders    WorkOrder[]          @relation("WorkOrderCreator")
+  updatedWorkOrders    WorkOrder[]          @relation("WorkOrderUpdater")
+  completedTasks       WorkOrderTask[]
+  createdRestrictions  ServiceRestriction[] @relation("RestrictionCreator")
+  releasedRestrictions ServiceRestriction[] @relation("RestrictionReleaser")
+
   rentalTerms         RentalItemTerm[]         @relation("RentalTermActor")
   createdRentals      Rental[]                 @relation("RentalCreator")
   updatedRentals      Rental[]                 @relation("RentalUpdater")
@@ -115,6 +126,8 @@ model ExternalIdentity {
 }
 
 model Membership {
+  assignedWorkOrders WorkOrder[]
+
   id             String             @id @default(uuid()) @db.Uuid
   organizationId String             @db.Uuid
   userId         String             @db.Uuid
@@ -182,6 +195,8 @@ model MembershipRole {
 }
 
 model Branch {
+  workOrders WorkOrder[]
+
   rentals        Rental[]
   machines       Machine[]
   id             String             @id @default(uuid()) @db.Uuid
@@ -458,6 +473,11 @@ model MachineModel {
 }
 
 model Machine {
+  deviceInstallations DeviceInstallation[]
+  workOrders          WorkOrder[]
+  maintenancePlans    MachineMaintenancePlan[]
+  serviceRestrictions ServiceRestriction[]
+
   rentalAssignments RentalMachineAssignment[]
   id                String                    @id @default(uuid()) @db.Uuid
   organizationId    String                    @db.Uuid
@@ -611,4 +631,244 @@ model RentalItemTerm {
   item           RentalItem     @relation(fields: [organizationId, itemId], references: [organizationId, id], onDelete: Restrict)
 
   @@index([organizationId, itemId, agreedAt])
+}
+
+enum WorkOrderStatus {
+  DRAFT
+  OPEN
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+  INSPECTION
+  OTHER
+}
+
+enum MaintenanceImpact {
+  INFORMATIONAL
+  WARNING
+  RENTAL_BLOCKING
+  SAFETY_CRITICAL
+}
+
+enum MaintenancePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum MaintenanceIntervalUnit {
+  DAYS
+  MONTHS
+}
+
+enum MaintenanceIntervalBasis {
+  COMPLETION
+  SCHEDULED
+}
+
+enum MaintenanceCostKind {
+  LABOR
+  PARTS
+  EXTERNAL_SERVICE
+  TRANSPORT
+  OTHER
+}
+
+model MaintenanceCounter {
+  organizationId String       @db.Uuid
+  year           Int
+  value          Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@id([organizationId, year])
+}
+
+model MaintenancePlan {
+  id             String                   @id @default(uuid()) @db.Uuid
+  organizationId String                   @db.Uuid
+  name           String                   @db.VarChar(200)
+  type           MaintenanceType
+  description    String?                  @db.VarChar(5000)
+  interval       Int
+  intervalUnit   MaintenanceIntervalUnit
+  intervalBasis  MaintenanceIntervalBasis
+  active         Boolean                  @default(true)
+  impact         MaintenanceImpact        @default(WARNING)
+  checklist      Json                     @default("[]")
+  createdAt      DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                 @updatedAt @db.Timestamptz(3)
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  machines       MachineMaintenancePlan[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, active])
+}
+
+model MachineMaintenancePlan {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @db.Uuid
+  machineId      String          @db.Uuid
+  planId         String          @db.Uuid
+  nextDueAt      DateTime        @db.Timestamptz(3)
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+  machine        Machine         @relation(fields: [organizationId, machineId], references: [organizationId, id], onDelete: Restrict)
+  plan           MaintenancePlan @relation(fields: [organizationId, planId], references: [organizationId, id], onDelete: Restrict)
+  workOrders     WorkOrder[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, machineId, planId])
+  @@index([organizationId, nextDueAt])
+}
+
+model WorkOrder {
+  planSnapshot         Json?
+  id                   String                  @id @default(uuid()) @db.Uuid
+  organizationId       String                  @db.Uuid
+  machineId            String                  @db.Uuid
+  branchId             String?                 @db.Uuid
+  assignedMembershipId String?                 @db.Uuid
+  machinePlanId        String?                 @db.Uuid
+  number               String                  @db.VarChar(40)
+  type                 MaintenanceType
+  status               WorkOrderStatus         @default(DRAFT)
+  impact               MaintenanceImpact       @default(INFORMATIONAL)
+  priority             MaintenancePriority     @default(NORMAL)
+  title                String                  @db.VarChar(200)
+  description          String?                 @db.VarChar(5000)
+  diagnosis            String?                 @db.VarChar(5000)
+  technicianNotes      String?                 @db.VarChar(5000)
+  completionNotes      String?                 @db.VarChar(5000)
+  cancellationReason   String?                 @db.VarChar(1000)
+  externalProvider     String?                 @db.VarChar(200)
+  serviceLocation      String?                 @db.VarChar(200)
+  plannedAt            DateTime?               @db.Timestamptz(3)
+  plannedEndAt         DateTime?               @db.Timestamptz(3)
+  dueAt                DateTime?               @db.Timestamptz(3)
+  startedAt            DateTime?               @db.Timestamptz(3)
+  completedAt          DateTime?               @db.Timestamptz(3)
+  cancelledAt          DateTime?               @db.Timestamptz(3)
+  createdAt            DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                @updatedAt @db.Timestamptz(3)
+  createdById          String                  @db.Uuid
+  updatedById          String                  @db.Uuid
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  machine              Machine                 @relation(fields: [organizationId, machineId], references: [organizationId, id], onDelete: Restrict)
+  branch               Branch?                 @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+  assignedMembership   Membership?             @relation(fields: [organizationId, assignedMembershipId], references: [organizationId, id], onDelete: Restrict)
+  machinePlan          MachineMaintenancePlan? @relation(fields: [organizationId, machinePlanId], references: [organizationId, id], onDelete: Restrict)
+  createdBy            User                    @relation("WorkOrderCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy            User                    @relation("WorkOrderUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+  tasks                WorkOrderTask[]
+  materials            WorkOrderMaterial[]
+  costs                WorkOrderCost[]
+  restrictions         ServiceRestriction[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, number])
+  @@index([organizationId, machineId, status])
+  @@index([organizationId, branchId, status, createdAt, id])
+  @@index([organizationId, dueAt])
+  @@index([organizationId, plannedAt, plannedEndAt])
+}
+
+model WorkOrderTask {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  workOrderId    String    @db.Uuid
+  description    String    @db.VarChar(1000)
+  notes          String?   @db.VarChar(2000)
+  completedAt    DateTime? @db.Timestamptz(3)
+  completedById  String?   @db.Uuid
+  workOrder      WorkOrder @relation(fields: [organizationId, workOrderId], references: [organizationId, id], onDelete: Restrict)
+  completedBy    User?     @relation(fields: [completedById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, workOrderId])
+}
+
+model WorkOrderMaterial {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  workOrderId    String    @db.Uuid
+  description    String    @db.VarChar(200)
+  partNumber     String?   @db.VarChar(200)
+  quantity       Decimal   @db.Decimal(30, 6)
+  unit           String    @db.VarChar(40)
+  workOrder      WorkOrder @relation(fields: [organizationId, workOrderId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, workOrderId])
+}
+
+model WorkOrderCost {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  workOrderId    String              @db.Uuid
+  kind           MaintenanceCostKind
+  amount         Decimal             @db.Decimal(30, 6)
+  currency       String              @db.Char(3)
+  description    String?             @db.VarChar(1000)
+  workOrder      WorkOrder           @relation(fields: [organizationId, workOrderId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, workOrderId])
+}
+
+model ServiceRestriction {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  machineId      String              @db.Uuid
+  workOrderId    String?             @db.Uuid
+  state          MachineServiceState
+  reason         String              @db.VarChar(1000)
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  createdById    String?             @db.Uuid
+  releasedAt     DateTime?           @db.Timestamptz(3)
+  releasedById   String?             @db.Uuid
+  releaseReason  String?             @db.VarChar(1000)
+  machine        Machine             @relation(fields: [organizationId, machineId], references: [organizationId, id], onDelete: Restrict)
+  workOrder      WorkOrder?          @relation(fields: [organizationId, workOrderId], references: [organizationId, id], onDelete: Restrict)
+  createdBy      User?               @relation("RestrictionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  releasedBy     User?               @relation("RestrictionReleaser", fields: [releasedById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, machineId, releasedAt])
+}
+
+model TrackingDevice {
+  priorities       Json                 @default("{}")
+  id               String               @id @default(uuid()) @db.Uuid
+  organizationId   String               @db.Uuid
+  provider         String               @db.VarChar(100)
+  providerDeviceId String               @db.VarChar(200)
+  serialNumber     String?              @db.VarChar(200)
+  deviceModel      String?              @db.VarChar(200)
+  createdAt        DateTime             @default(now()) @db.Timestamptz(3)
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  installations    DeviceInstallation[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, provider, providerDeviceId])
+}
+
+model DeviceInstallation {
+  id               String         @id @default(uuid()) @db.Uuid
+  organizationId   String         @db.Uuid
+  trackingDeviceId String         @db.Uuid
+  machineId        String         @db.Uuid
+  installedAt      DateTime       @db.Timestamptz(3)
+  removedAt        DateTime?      @db.Timestamptz(3)
+  device           TrackingDevice @relation(fields: [organizationId, trackingDeviceId], references: [organizationId, id], onDelete: Restrict, onUpdate: NoAction)
+  machine          Machine        @relation(fields: [organizationId, machineId], references: [organizationId, id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([organizationId, machineId, installedAt])
 }

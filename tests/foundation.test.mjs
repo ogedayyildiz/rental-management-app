@@ -1,3 +1,6 @@
+import { deviceCases } from './devices.cases.mjs';
+import { telemetryCases } from './telemetry.cases.mjs';
+import { maintenanceCases } from './maintenance.cases.mjs';
 import { rentalCases } from './rentals.cases.mjs';
 import { machineCases } from './machines.cases.mjs';
 import assert from 'node:assert/strict';
@@ -764,6 +767,15 @@ test(
           app = undefined;
         },
       );
+      await deviceCases(suite, db, fixture);
+      await telemetryCases(suite, db, fixture);
+      await maintenanceCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
       await rentalCases(suite, db, fixture, {
         Test,
         FoundationModule,

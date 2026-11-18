@@ -1,3 +1,8 @@
+import { MaintenanceController } from './maintenance/maintenance.controller.js';
+import { DeviceController } from './devices/device.controller.js';
+import { DeviceService } from './devices/device.service.js';
+import { MaintenanceService } from './maintenance/maintenance.service.js';
+import { PrismaMaintenanceUnitOfWork } from './infrastructure/prisma.maintenance.js';
 import { RentalController } from './rentals/rental.controller.js';
 import { RentalService } from './rentals/rental.service.js';
 import { PrismaRentalUnitOfWork } from './infrastructure/prisma.rentals.js';
@@ -45,6 +50,8 @@ class DatabaseLifecycle {
 
 @Module({
   controllers: [
+    DeviceController,
+    MaintenanceController,
     RentalController,
     BranchController,
     OnboardingController,
@@ -53,6 +60,17 @@ class DatabaseLifecycle {
     MachineController,
   ],
   providers: [
+    {
+      provide: DeviceService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) => new DeviceService(db),
+    },
+    {
+      provide: MaintenanceService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new MaintenanceService(new PrismaMaintenanceUnitOfWork(db)),
+    },
     {
       provide: RentalService,
       inject: [DATABASE],

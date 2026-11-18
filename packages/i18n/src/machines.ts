@@ -1,5 +1,7 @@
 export const machineMessages = {
   en: {
+    'machines.serviceManaged':
+      'Service restrictions are managed in Maintenance.',
     'machines.committed':
       'This machine is reserved or rented. Resolve its rental commitments before marking it sold or retired.',
     'machines.archivedEdit':
@@ -89,6 +91,8 @@ export const machineMessages = {
     'machines.THIRD_PARTY': 'Third party',
   },
   tr: {
+    'machines.serviceManaged':
+      'Servis kısıtlamaları Bakım bölümünden yönetilir.',
     'machines.committed':
       'Bu makine rezerve edilmiş veya kirada. Satıldı ya da emekli durumuna almadan önce kiralama taahhütlerini çözün.',
     'machines.archivedEdit':

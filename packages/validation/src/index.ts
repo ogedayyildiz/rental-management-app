@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './telemetry.js';
 export * from './customers.js';
 
 export const identifierSchema = z.uuid();
@@ -77,3 +78,5 @@ export const auditMetadataSchema = z.strictObject({
 });
 export * from './machines.js';
 export * from './rentals.js';
+
+export * from './maintenance.js';

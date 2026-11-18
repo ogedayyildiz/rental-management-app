@@ -1,3 +1,5 @@
+import { MaintenanceService } from '../apps/api/dist/maintenance/maintenance.service.js';
+import { PrismaMaintenanceUnitOfWork } from '../apps/api/dist/infrastructure/prisma.maintenance.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { RentalService } from '../apps/api/dist/rentals/rental.service.js';
@@ -7,6 +9,8 @@ import { PrismaMachineUnitOfWork } from '../apps/api/dist/infrastructure/prisma.
 import { CustomerService } from '../apps/api/dist/customers/customer.service.js';
 import { PrismaCustomerUnitOfWork } from '../apps/api/dist/infrastructure/prisma.customers.js';
 const keys = [
+  'maintenance.block_machine',
+  'maintenance.release_machine',
   'rentals.read',
   'rentals.create',
   'rentals.update',
@@ -27,6 +31,36 @@ export async function rentalCases(suite, db, fixture, h) {
     service = new RentalService(unit, () => new Date(now)),
     machines = new MachineService(new PrismaMachineUnitOfWork(db)),
     customers = new CustomerService(new PrismaCustomerUnitOfWork(db));
+  const maintenance = new MaintenanceService(
+    new PrismaMaintenanceUnitOfWork(db),
+  );
+  async function setService(t, state) {
+    const active = await db.serviceRestriction.findMany({
+      where: {
+        organizationId: t.organization.id,
+        machineId: t.machine.id,
+        releasedAt: null,
+        workOrderId: null,
+      },
+    });
+    for (const x of active)
+      await maintenance.release(
+        t.principal,
+        t.organization.id,
+        t.machine.id,
+        x.id,
+        { reason: 'Test technical release' },
+        randomUUID(),
+      );
+    if (state !== 'NORMAL')
+      await maintenance.block(
+        t.principal,
+        t.organization.id,
+        t.machine.id,
+        { state, reason: 'Test technical restriction' },
+        randomUUID(),
+      );
+  }
   async function tenant() {
     const t = await fixture();
     await db.rolePermission.createMany({
@@ -561,29 +595,11 @@ export async function rentalCases(suite, db, fixture, h) {
     async () => {
       const t = await tenant(),
         row = await create(t);
-      await machines.update(
-        t.principal,
-        t.organization.id,
-        t.machine.id,
-        { serviceState: 'SERVICE_BLOCKED' },
-        randomUUID(),
-      );
+      await setService(t, 'SERVICE_BLOCKED');
       await assert.rejects(reserve(t, row.id), { code: 'MACHINE_INELIGIBLE' });
-      await machines.update(
-        t.principal,
-        t.organization.id,
-        t.machine.id,
-        { serviceState: 'MAINTENANCE_DUE' },
-        randomUUID(),
-      );
+      await setService(t, 'MAINTENANCE_DUE');
       const reserved = await reserve(t, row.id);
-      await machines.update(
-        t.principal,
-        t.organization.id,
-        t.machine.id,
-        { serviceState: 'OUT_OF_SERVICE' },
-        randomUUID(),
-      );
+      await setService(t, 'OUT_OF_SERVICE');
       await assert.rejects(
         call(t, 'dispatch', row.id, {
           assignmentIds: reserved.items[0].assignments.map((a) => a.id),
@@ -852,13 +868,7 @@ export async function rentalCases(suite, db, fixture, h) {
         assignmentIds: ids,
         actualStartAt: start,
       });
-      await machines.update(
-        t.principal,
-        t.organization.id,
-        t.machine.id,
-        { serviceState: 'OUT_OF_SERVICE' },
-        randomUUID(),
-      );
+      await setService(t, 'OUT_OF_SERVICE');
       await assert.rejects(
         broken.returnMachines(
           t.principal,

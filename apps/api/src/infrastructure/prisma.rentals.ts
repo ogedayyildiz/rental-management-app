@@ -260,10 +260,24 @@ export class PrismaRentalRepository implements RentalRepository {
     return (
       await this.db.machine.findMany({
         where: { organizationId: c.organizationId },
-        include: { model: { include: { category: true } } },
+        include: {
+          model: { include: { category: true } },
+          workOrders: {
+            where: {
+              status: 'PLANNED',
+              plannedAt: { not: null },
+              plannedEndAt: { not: null },
+            },
+            select: { plannedAt: true, plannedEndAt: true },
+          },
+        },
       })
     ).map((m) => ({
       id: m.id,
+      maintenancePeriods: m.workOrders.map((w) => ({
+        start: w.plannedAt!.toISOString(),
+        end: w.plannedEndAt!.toISOString(),
+      })),
       fleetNumber: m.fleetNumber,
       manufacturer: m.model.manufacturer,
       model: m.model.name,

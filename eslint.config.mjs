@@ -5,9 +5,11 @@ import prettier from 'eslint-config-prettier';
 export default tseslint.config(
   {
     ignores: [
+      '**/.e2e/**',
       '**/node_modules/**',
       '**/dist/**',
       '**/generated/**',
+      '**/public/map/**',
       '**/.next/**',
       '**/.expo/**',
       '**/next-env.d.ts',
@@ -36,6 +38,7 @@ export default tseslint.config(
         URL: 'readonly',
         fetch: 'readonly',
         setTimeout: 'readonly',
+        AbortSignal: 'readonly',
       },
     },
   },

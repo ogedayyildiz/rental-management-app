@@ -19,13 +19,19 @@
     "infra:down": "docker compose down",
     "db:migrate": "pnpm --filter @rental/database migrate",
     "db:migrate:dev": "pnpm --filter @rental/database migrate:dev",
-    "db:seed": "turbo run build --filter=@rental/database && pnpm --filter @rental/database seed"
+    "db:seed": "turbo run build --filter=@rental/database && pnpm --filter @rental/database seed",
+    "test:e2e": "pnpm exec turbo run build --filter=@rental/api --filter=@rental/api-client --filter=@rental/i18n --filter=@rental/telemetry-service && node --env-file-if-exists=.env tests/e2e/run.mjs",
+    "test:e2e:headed": "pnpm test:e2e --headed",
+    "test:e2e:cleanup": "node --env-file-if-exists=.env tests/e2e/run.mjs --cleanup"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
+    "@napi-rs/canvas": "1.0.11",
+    "@playwright/test": "1.64.1",
     "@types/node": "24.19.2",
     "eslint": "9.39.5",
     "eslint-config-prettier": "10.1.8",
+    "pdfjs-dist": "6.4.299",
     "prettier": "3.9.10",
     "tsx": "4.23.15",
     "turbo": "2.11.7",

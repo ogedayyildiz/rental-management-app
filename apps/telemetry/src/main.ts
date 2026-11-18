@@ -7,7 +7,7 @@ const { host, port } = readServiceEnvironment(
   3002,
 );
 
-// Liveness only: ingestion/job processing is intentionally not implemented.
+// Production ingress listeners stay closed until their provider protocols are verified.
 const server = createServer((request, response) => {
   if (request.method === 'GET' && request.url === '/health') {
     response.writeHead(200, { 'Content-Type': 'application/json' });

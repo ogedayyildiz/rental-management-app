@@ -1,4 +1,6 @@
 'use client';
+import { MachineMaintenanceHistory } from '../maintenance/machine-history';
+import { MachineTelemetry } from '../devices/machine-telemetry';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createMachineClient, MachineApiError } from '@rental/api-client';
@@ -260,7 +262,15 @@ export function MachineWorkspace({
             ) : detail ? (
               <section className="machine-panel">
                 <div className="machine-actions">
-                  <Link href="/machines">{t('machines.back')}</Link>
+                  <Link
+                    href="/machines"
+                    onClick={() => {
+                      setDetail(null);
+                      setForm(false);
+                    }}
+                  >
+                    {t('machines.back')}
+                  </Link>
                   {detail.lifecycleState !== 'ACTIVE' &&
                     can('machines.archive') && (
                       <>
@@ -312,6 +322,21 @@ export function MachineWorkspace({
                 <h2>
                   {detail.fleetNumber} · {detail.manufacturer} {detail.model}
                 </h2>
+                {can('maintenance.read') && (
+                  <MachineMaintenanceHistory
+                    org={org}
+                    machineId={detail.id}
+                    locale={locale}
+                  />
+                )}
+                {can('telemetry.read') && (
+                  <MachineTelemetry
+                    key={org + detail.id}
+                    org={org}
+                    id={detail.id}
+                    locale={locale}
+                  />
+                )}
                 <dl className="machine-grid">
                   {(
                     [

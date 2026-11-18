@@ -12,6 +12,7 @@ import type { TenantContext } from '../access/access.service.js';
 import type { AccessRepository } from '../access/contracts.js';
 import type { AuditRepository } from '../audit/audit.service.js';
 export interface RentalMachine {
+  maintenancePeriods?: { start: string; end: string }[];
   id: string;
   fleetNumber: string;
   manufacturer: string;

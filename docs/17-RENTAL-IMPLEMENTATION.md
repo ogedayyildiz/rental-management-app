@@ -246,3 +246,10 @@ do not clear service blocks or erase other reservations.
 - Return one machine from a multi-machine rental: Complete stays disabled.
   Return the remaining required machines: Complete becomes available. Explicitly
   complete before the planned end and verify COMPLETED without a payment action.
+
+## Maintenance integration (2026-10-21)
+
+Planned Maintenance workshop periods now participate in the existing transactional
+capacity matcher. Service-state changes are owned by Maintenance restrictions;
+Rental still exclusively owns rentalState. A returned machine can remain technically
+blocked. See [Maintenance implementation](18-MAINTENANCE-IMPLEMENTATION.md#rental-coordination).

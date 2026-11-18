@@ -1,8 +1,11 @@
+import { MaintenanceService } from '../apps/api/dist/maintenance/maintenance.service.js';
+import { PrismaMaintenanceUnitOfWork } from '../apps/api/dist/infrastructure/prisma.maintenance.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { MachineService } from '../apps/api/dist/machines/machine.service.js';
 import { PrismaMachineUnitOfWork } from '../apps/api/dist/infrastructure/prisma.machines.js';
 const keys = [
+  'maintenance.block_machine',
   'machines.read',
   'machines.create',
   'machines.update',
@@ -13,6 +16,17 @@ const keys = [
 export async function machineCases(suite, db, fixture, h) {
   const unit = new PrismaMachineUnitOfWork(db),
     service = new MachineService(unit);
+  const maintenance = new MaintenanceService(
+    new PrismaMaintenanceUnitOfWork(db),
+  );
+  const block = (t, id, state) =>
+    maintenance.block(
+      t.principal,
+      t.organization.id,
+      id,
+      { state, reason: 'Test restriction' },
+      randomUUID(),
+    );
   async function tenant() {
     const t = await fixture();
     await db.rolePermission.createMany({
@@ -53,10 +67,12 @@ export async function machineCases(suite, db, fixture, h) {
       assert.equal(row.serviceState, 'NORMAL');
       assert.equal(row.lifecycleState, 'ACTIVE');
       assert.equal(row.createdById, t.user.id);
-      const edited = await update(t, row.id, {
-        notes: 'Unit note',
-        serviceState: 'OUT_OF_SERVICE',
-      });
+      await assert.rejects(
+        update(t, row.id, { serviceState: 'OUT_OF_SERVICE' }),
+        { code: 'INVALID_INPUT' },
+      );
+      await block(t, row.id, 'OUT_OF_SERVICE');
+      const edited = await update(t, row.id, { notes: 'Unit note' });
       assert.equal(edited.acquisitionCost, row.acquisitionCost);
       assert.equal(edited.specifications.workingHeightM, 12);
       const retired = await archive(t, row.id);
@@ -404,9 +420,9 @@ export async function machineCases(suite, db, fixture, h) {
         other = await tenant();
       for (const lifecycleState of ['SOLD', 'RETIRED']) {
         const row = await create(t, {
-          serviceState: 'OUT_OF_SERVICE',
           branchId: t.branch.id,
         });
+        await block(t, row.id, 'OUT_OF_SERVICE');
         await archive(t, row.id, { lifecycleState });
         const body = {
           reasonCode:
@@ -603,7 +619,7 @@ export async function machineCases(suite, db, fixture, h) {
           t.principal,
           t.organization.id,
           row.id,
-          { branchId: t.branch.id, serviceState: 'SERVICE_BLOCKED' },
+          { branchId: t.branch.id },
           randomUUID(),
         ),
         /audit unavailable/,

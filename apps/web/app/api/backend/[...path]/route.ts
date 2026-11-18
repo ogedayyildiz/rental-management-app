@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAuth0 } from '../../../../lib/auth0';
 import {
+  maintenanceEndpointAllowed,
+  telemetryEndpointAllowed,
   rentalEndpointAllowed,
   customerEndpointAllowed,
   machineEndpointAllowed,
@@ -14,6 +16,8 @@ async function forward(
   const { path } = await context.params;
   const endpoint = path.join('/');
   const allowed =
+    telemetryEndpointAllowed(request.method, endpoint) ||
+    maintenanceEndpointAllowed(request.method, endpoint) ||
     rentalEndpointAllowed(request.method, endpoint) ||
     customerEndpointAllowed(request.method, endpoint) ||
     machineEndpointAllowed(request.method, endpoint) ||
@@ -60,13 +64,34 @@ async function forward(
         signal: AbortSignal.timeout(10000),
       },
     );
-    return new NextResponse(await response.text(), {
-      status: response.status,
-      headers: {
-        'content-type': 'application/json',
-        'cache-control': 'no-store',
+    const isReport =
+      request.method === 'GET' &&
+      /^organizations\/[0-9a-f-]{36}\/maintenance\/machines\/[0-9a-f-]{36}\/export\/(pdf|xlsx)$/.test(
+        endpoint,
+      ) &&
+      response.ok;
+    return new NextResponse(
+      isReport ? await response.arrayBuffer() : await response.text(),
+      {
+        status: response.status,
+        headers: {
+          'content-type': isReport
+            ? endpoint.endsWith('/pdf')
+              ? 'application/pdf'
+              : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            : 'application/json',
+          ...(isReport
+            ? {
+                'content-disposition':
+                  'attachment; filename="maintenance.' +
+                  (endpoint.endsWith('/pdf') ? 'pdf' : 'xlsx') +
+                  '"',
+              }
+            : {}),
+          'cache-control': 'no-store',
+        },
       },
-    });
+    );
   } catch {
     return NextResponse.json(
       { code: 'AUTHENTICATION_OR_API_UNAVAILABLE' },

@@ -5,13 +5,20 @@
     "AUTH0_*",
     "APP_BASE_URL",
     "API_BASE_URL",
+    "NEXT_PUBLIC_MAP_STYLE_URL",
     "EXPO_PUBLIC_*",
     "MOBILE_*"
   ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "src/generated/**"]
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        "src/generated/**",
+        "public/map/**"
+      ]
     },
     "dev": {
       "dependsOn": ["^build"],
@@ -21,6 +28,7 @@
         "HOST",
         "API_PORT",
         "TELEMETRY_PORT",
+        "TELEMETRY_FRESH_SECONDS",
         "WORKER_PORT",
         "CI",
         "DATABASE_URL"

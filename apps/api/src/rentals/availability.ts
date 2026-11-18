@@ -80,6 +80,16 @@ export function assertSchedule(
         });
     }
   }
+  for (const machine of machines) {
+    for (const period of machine.maintenancePeriods ?? []) {
+      demands.push({
+        start: Date.parse(period.start),
+        end: Date.parse(period.end),
+        candidates: [machine.id],
+        quantity: 1,
+      });
+    }
+  }
   const relevant = demands.filter((d) => d.start < upper && d.end > lower),
     points = new Set<number>([lower]);
   for (const d of relevant)

@@ -2644,3 +2644,6 @@ Rental business rules:
 Security:
 
 `10-SECURITY.md`
+## Maintenance implementation permissions
+
+The implemented maintenance permission catalog and action requirements are documented in [Maintenance implementation](18-MAINTENANCE-IMPLEMENTATION.md). Cost viewing and editing remain separate (maintenance.costs.view and maintenance.costs.edit); technical block/release and export require explicit grants. Existing TENANT_ADMINISTRATION template roles receive these grants through the audited migration. PlatformAccess confers none of them.

@@ -1,11 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import {
-  machineCreateSchema,
-  machinePatchSchema,
-  machineServiceStateSchema,
-} from '@rental/validation';
+import { machineCreateSchema, machinePatchSchema } from '@rental/validation';
 import type { MachineView } from '@rental/validation';
 import { translate } from '@rental/i18n';
 import type { Locale, TranslationKey } from '@rental/i18n';
@@ -63,7 +59,7 @@ export function MachineForm({
     input['modelYear'] = str('modelYear') ? Number(str('modelYear')) : null;
     for (const key of ['acquisitionDate', 'ownershipType', 'branchId', 'notes'])
       input[key] = str(key) || null;
-    input['serviceState'] = str('serviceState');
+    input['serviceState'] = row?.serviceState ?? 'NORMAL';
     if (canEditCost) {
       input['acquisitionCost'] = str('acquisitionCost') || null;
       input['currency'] = str('currency') || null;
@@ -141,16 +137,8 @@ export function MachineForm({
           </label>
           <label>
             {t('machines.serviceState')}
-            <select
-              name="serviceState"
-              defaultValue={row?.serviceState ?? 'NORMAL'}
-            >
-              {machineServiceStateSchema.options.map((s) => (
-                <option key={s} value={s}>
-                  {t(`machines.${s}`)}
-                </option>
-              ))}
-            </select>
+            <span>{t(`machines.${row?.serviceState ?? 'NORMAL'}`)}</span>
+            <small>{t('machines.serviceManaged')}</small>
           </label>
           <label>
             {t('machines.ownershipType')}

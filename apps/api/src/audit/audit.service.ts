@@ -7,6 +7,24 @@ export interface AuditRecord {
   actorUserId: string;
   actorType: 'USER';
   action:
+    | 'DEVICE_REGISTERED'
+    | 'DEVICE_UPDATED'
+    | 'DEVICE_INSTALLED'
+    | 'DEVICE_REMOVED'
+    | 'MAINTENANCE_CREATED'
+    | 'MAINTENANCE_UPDATED'
+    | 'MAINTENANCE_OPENED'
+    | 'MAINTENANCE_PLANNED'
+    | 'MAINTENANCE_STARTED'
+    | 'MAINTENANCE_COMPLETED'
+    | 'MAINTENANCE_CANCELLED'
+    | 'MAINTENANCE_CHECKLIST_CHANGED'
+    | 'MAINTENANCE_MATERIAL_ADDED'
+    | 'MAINTENANCE_COST_ADDED'
+    | 'MAINTENANCE_BLOCKED'
+    | 'MAINTENANCE_RELEASED'
+    | 'MAINTENANCE_PLAN_CHANGED'
+    | 'MAINTENANCE_EXPORTED'
     | 'RENTAL_CREATED'
     | 'RENTAL_UPDATED'
     | 'RENTAL_CUSTOMER_CHANGED'
@@ -37,6 +55,12 @@ export interface AuditRecord {
     | 'CUSTOMER_ADDRESS_CREATED'
     | 'CUSTOMER_ADDRESS_UPDATED';
   targetType:
+    | 'TrackingDevice'
+    | 'DeviceInstallation'
+    | 'WorkOrder'
+    | 'MaintenancePlan'
+    | 'MachineMaintenancePlan'
+    | 'ServiceRestriction'
     | 'Rental'
     | 'Machine'
     | 'Branch'

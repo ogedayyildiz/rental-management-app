@@ -788,3 +788,10 @@ Testing and Deployment
 The database/migration, tenant-context, permission and audit foundation is in place.
 Auth0, invitation/administration, Customers and Machines are implemented.
 Rental workflows are documented in `docs/17-RENTAL-IMPLEMENTATION.md`.
+
+Maintenance workflows, service restrictions, calendar plans and technical history exports are documented in `docs/18-MAINTENANCE-IMPLEMENTATION.md`.
+
+Automated browser verification uses `pnpm test:e2e` with disposable data and test personas.
+See [E2E testing](docs/19-E2E-TESTING.md) for setup, isolation, debugging and CI.
+
+The [telemetry foundation](docs/20-TELEMETRY-FOUNDATION.md) defines tenant-owned tracking devices and historical machine installations.

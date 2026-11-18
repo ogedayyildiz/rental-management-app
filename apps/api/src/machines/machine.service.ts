@@ -101,6 +101,8 @@ export class MachineService {
       if ('acquisitionCost' in supplied || 'currency' in supplied)
         requirePermission(c, 'finance.acquisition_cost.edit');
       const input = parseInput(machineCreateSchema, body);
+      if (input.serviceState !== 'NORMAL')
+        throw new AccessError('INVALID_INPUT');
       await r.machines.requireBranch(c, input.branchId);
       const row = await r.machines.save(c, null, input);
       await this.audit(r, c, requestId, row.id, 'MACHINE_CREATED');
@@ -120,6 +122,11 @@ export class MachineService {
       if (before.lifecycleState !== 'ACTIVE')
         throw new AccessError('MACHINE_ARCHIVED');
       const patch = parseInput(machinePatchSchema, body);
+      if (
+        patch.serviceState !== undefined &&
+        patch.serviceState !== before.serviceState
+      )
+        throw new AccessError('INVALID_INPUT');
       if ('acquisitionCost' in patch || 'currency' in patch)
         requirePermission(c, 'finance.acquisition_cost.edit');
       const input = parseInput(machineCreateSchema, {

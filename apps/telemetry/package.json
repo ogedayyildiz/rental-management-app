@@ -2,7 +2,9 @@
   "name": "@rental/telemetry-service",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
+    "simulate": "node --env-file-if-exists=../../.env dist/simulator.js",
     "dev": "node --env-file-if-exists=../../.env --import tsx --watch src/main.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node --env-file-if-exists=../../.env dist/main.js",
@@ -10,6 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@rental/database": "workspace:*",
+    "@rental/validation": "workspace:*",
     "@rental/config": "workspace:*"
   }
 }

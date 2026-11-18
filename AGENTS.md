@@ -739,6 +739,14 @@ remote command transitions
 
 Negative authorization tests are mandatory for sensitive features.
 
+User-visible workflow changes must add or update Playwright E2E coverage and run
+the relevant browser tests before being declared technically verified. Use the
+isolated test personas described in `docs/19-E2E-TESTING.md` to exercise forms and
+workflow actions directly, instead of asking the owner to perform each routine
+browser check. Run `pnpm test:e2e` for cross-domain changes. Keep genuinely external
+Auth0/provider, real-device and deployment verification separate and explicitly
+report anything not verified. Never use personal Auth0 credentials for automation.
+
 Example:
 
 ```text
