@@ -79,8 +79,8 @@ export interface AuditRecord {
     nextBranchId?: string | null;
     previousState?: string;
     nextState?: string;
-    before?: { name: string };
-    after?: { name: string };
+    before?: { name: string; active?: boolean };
+    after?: { name: string; active?: boolean };
   };
 }
 export interface AuditRepository {
@@ -121,11 +121,22 @@ export class AuditService {
     branchId: string,
     before: string,
     after: string,
+    beforeActive?: boolean,
+    afterActive?: boolean,
   ): Promise<void> {
     assertTenantContext(context);
     identifierSchema.parse(requestId);
     identifierSchema.parse(branchId);
-    const metadata = { before: { name: before }, after: { name: after } };
+    const metadata = {
+      before: {
+        name: before,
+        ...(beforeActive === undefined ? {} : { active: beforeActive }),
+      },
+      after: {
+        name: after,
+        ...(afterActive === undefined ? {} : { active: afterActive }),
+      },
+    };
     auditMetadataSchema.parse(metadata);
     await this.repository.append({
       organizationId: context.organizationId,

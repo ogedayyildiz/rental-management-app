@@ -158,12 +158,50 @@ export async function seed(db, env) {
       (k) =>
         !k.startsWith('finance.') &&
         !k.includes('.pricing.') &&
-        !k.includes('.costs.'),
+        !k.includes('.costs.') &&
+        ![
+          'organization.manage',
+          'users.manage',
+          'roles.manage',
+          'branches.manage',
+          'audit.read',
+        ].includes(k),
     ),
     'finance.analytics.view',
     'finance.analytics.export',
   ]);
   await member(db, 'SECOND_TENANT_ADMIN', second, tenantPermissions);
+  await member(db, 'MANAGED_MEMBER', org, [
+    'customers.read',
+    'machines.read',
+    'rentals.read',
+    'maintenance.read',
+  ]);
+  const multi = await member(db, 'TENANT_MULTI_ORG', org, [
+    'customers.read',
+    'machines.read',
+  ]);
+  const otherRole = await db.role.create({
+    data: {
+      organizationId: second.id,
+      name: 'Multi organization observer',
+      permissions: {
+        create: [
+          { permissionKey: 'customers.read' },
+          { permissionKey: 'machines.read' },
+        ],
+      },
+    },
+  });
+  await db.membership.create({
+    data: {
+      organizationId: second.id,
+      userId: multi.id,
+      status: 'ACTIVE',
+      branchScope: 'ALL_BRANCHES',
+      roles: { create: { roleId: otherRole.id } },
+    },
+  });
   const auth = new AuthenticationService(
     { verify: async (token) => identityFor(env, token) },
     new PrismaAccessRepository(db),

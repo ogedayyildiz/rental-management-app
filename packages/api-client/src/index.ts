@@ -16,3 +16,5 @@ export function telemetryEndpointAllowed(method: string, path: string) {
   return !!routes[method] && new RegExp(base + routes[method] + '$').test(path);
 }
 export * from './analytics.js';
+
+export * from './administration.js';

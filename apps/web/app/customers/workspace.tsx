@@ -25,7 +25,11 @@ type Organization = {
   name: string;
   access: { organizationId: string; permissions: string[] };
 };
-export function CustomerWorkspace() {
+export function CustomerWorkspace({
+  initialOrg = '',
+}: {
+  initialOrg?: string;
+}) {
   const [locale, setLocale] = useState<Locale>('en');
   const t = (key: TranslationKey) => translate(locale, key);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -77,7 +81,9 @@ export function CustomerWorkspace() {
         );
         if (ignore) return;
         setOrganizations(available);
-        const first = available[0];
+        const first =
+          available.find((x) => x.access.organizationId === initialOrg) ??
+          available[0];
         if (first) {
           setOrg(first.access.organizationId);
           const result = await api.list(
@@ -95,7 +101,7 @@ export function CustomerWorkspace() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [initialOrg]);
   async function load(
     organizationId = org,
     cursor: string | null = null,

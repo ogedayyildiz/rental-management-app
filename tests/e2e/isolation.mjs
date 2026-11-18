@@ -16,7 +16,7 @@ export function assertE2E(env) {
     throw new Error('Unsafe E2E configuration');
   const identities = JSON.parse(env.RENTAL_E2E_IDENTITIES ?? '{}');
   if (
-    Object.keys(identities).length !== 5 ||
+    Object.keys(identities).length !== 7 ||
     Object.values(identities).some((x) => !/^[a-f0-9]{64}$/.test(x.token))
   )
     throw new Error('Ephemeral E2E identities required');

@@ -144,6 +144,7 @@ model Membership {
   @@unique([organizationId, userId])
   @@unique([organizationId, id])
   @@index([userId])
+  @@index([organizationId,status,id],map:"Membership_org_status_id")
 }
 
 model Role {
@@ -243,6 +244,7 @@ model OrganizationInvitation {
 
   @@unique([organizationId, id])
   @@index([organizationId, email, status])
+  @@index([organizationId,id],map:"OrganizationInvitation_org_id")
 }
 
 model InvitationRole {
@@ -320,6 +322,7 @@ model AuditEvent {
 
   @@index([organizationId, timestamp])
   @@index([actorUserId, timestamp])
+  @@index([organizationId,timestamp,id],map:"AuditEvent_org_time_id")
 }
 
 enum CustomerType {

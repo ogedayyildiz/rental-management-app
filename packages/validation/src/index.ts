@@ -17,9 +17,12 @@ export const externalIdentitySchema = z.strictObject({
   issuer: z.string().url().max(2048),
   subject: z.string().min(1).max(255),
 });
-export const branchUpdateSchema = z.strictObject({
-  name: z.string().trim().min(1).max(200),
-});
+export const branchUpdateSchema = z
+  .strictObject({
+    name: z.string().trim().min(1).max(200).optional(),
+    active: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0);
 
 export const invitationEmailSchema = z
   .email()
@@ -67,8 +70,12 @@ export const organizationCreateSchema = z.strictObject({
 
 // Explicit allowlist: do not persist arbitrary request bodies, headers or secrets.
 export const auditMetadataSchema = z.strictObject({
-  before: z.strictObject({ name: z.string().max(200) }).optional(),
-  after: z.strictObject({ name: z.string().max(200) }).optional(),
+  before: z
+    .strictObject({ name: z.string().max(200), active: z.boolean().optional() })
+    .optional(),
+  after: z
+    .strictObject({ name: z.string().max(200), active: z.boolean().optional() })
+    .optional(),
   permission: z.string().max(100).optional(),
   reasonCode: z
     .string()
@@ -81,3 +88,4 @@ export * from './rentals.js';
 
 export * from './maintenance.js';
 export * from './analytics.js';
+export * from './administration.js';

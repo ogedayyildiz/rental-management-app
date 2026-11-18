@@ -105,20 +105,14 @@ export class OnboardingService {
         organizationId,
       );
       requirePermission(context, 'users.manage');
+      if (context.branchScope !== 'ALL_BRANCHES')
+        throw new AccessError('ACCESS_DENIED');
       requirePermission(context, 'roles.manage');
       const grants = await repository.eligibleGrants(
         context.organizationId,
         parsed.data,
       );
-      if (
-        !grants ||
-        grants.some((key) => !context.permissions.includes(key)) ||
-        (context.branchScope === 'SELECTED_BRANCHES' &&
-          (parsed.data.branchScope === 'ALL_BRANCHES' ||
-            parsed.data.branchIds.some(
-              (id) => !context.branchIds.includes(id),
-            )))
-      )
+      if (!grants || grants.some((key) => !context.permissions.includes(key)))
         throw new AccessError('ACCESS_DENIED');
       return this.issue(
         repository,
@@ -144,6 +138,8 @@ export class OnboardingService {
         organizationId,
       );
       requirePermission(context, 'users.manage');
+      if (context.branchScope !== 'ALL_BRANCHES')
+        throw new AccessError('ACCESS_DENIED');
       if (!(await repository.revokeInvitation(context.organizationId, id.data)))
         throw new AccessError('NOT_FOUND');
       await repository.audit(

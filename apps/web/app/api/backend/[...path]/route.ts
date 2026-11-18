@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuth0 } from '../../../../lib/auth0';
 import {
+  administrationEndpointAllowed,
   analyticsEndpointAllowed,
   maintenanceEndpointAllowed,
   telemetryEndpointAllowed,
@@ -17,6 +18,7 @@ async function forward(
   const { path } = await context.params;
   const endpoint = path.join('/');
   const allowed =
+    administrationEndpointAllowed(request.method, endpoint) ||
     analyticsEndpointAllowed(request.method, endpoint) ||
     telemetryEndpointAllowed(request.method, endpoint) ||
     maintenanceEndpointAllowed(request.method, endpoint) ||

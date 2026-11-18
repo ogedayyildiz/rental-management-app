@@ -1,5 +1,10 @@
 import { CustomerWorkspace } from './workspace';
 import './customers.css';
-export default function CustomersPage() {
-  return <CustomerWorkspace />;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ organizationId?: string }>;
+}) {
+  const q = await searchParams;
+  return <CustomerWorkspace initialOrg={q.organizationId ?? ''} />;
 }

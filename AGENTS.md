@@ -857,3 +857,7 @@ relevant ADR updated if architecture changed
 ```
 
 The implementation must remain consistent with the documented domain model and architecture.
+
+## Tenant administration implementation
+
+Before changing organization settings, memberships, roles, branches, invitations or audit reads, also read `docs/22-TENANT-ADMINISTRATION-IMPLEMENTATION.md`. Preserve its approved ALL_BRANCHES administration policy, actor permission ceiling and transactional last-administrator protection. Do not expose arbitrary audit metadata or convert tenant administration into global User/provider administration.

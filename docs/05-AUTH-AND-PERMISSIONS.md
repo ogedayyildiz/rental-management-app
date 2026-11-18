@@ -2654,3 +2654,9 @@ They do not imply acquisition-cost, rental-pricing or maintenance-cost visibilit
 The backend omits restricted source amounts and every dependent contribution/recovery
 metric, including from XLSX. PlatformAccess grants no tenant analytics. See the exact
 source permission matrix in [Finance implementation](21-FINANCE-ANALYTICS-IMPLEMENTATION.md).
+
+## Approved tenant administration implementation policy
+
+Organization-wide settings, membership/role/invitation administration and audit reads require ALL_BRANCHES plus the relevant permission. At least one active global User with an active ALL_BRANCHES Membership must retain organization.manage, users.manage, roles.manage and branches.manage collectively through enabled roles. Mutations cannot grant permissions beyond the actor's own grants, and cannot remove the last such administrative capability. Assigned roles cannot be disabled while referenced by memberships or pending unexpired invitations. Selected-branch business access and scoped branch editing remain unchanged.
+
+The tenant audit reader additionally requires `audit.read`; it exposes only a reviewed event envelope, never arbitrary raw metadata. See [the approved implementation policy and API](22-TENANT-ADMINISTRATION-IMPLEMENTATION.md) for concurrency, membership lifecycle, financial permissions and organization switching.

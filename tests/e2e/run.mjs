@@ -140,6 +140,8 @@ try {
         'TENANT_LIMITED',
         'TENANT_NO_FINANCE',
         'SECOND_TENANT_ADMIN',
+        'MANAGED_MEMBER',
+        'TENANT_MULTI_ORG',
       ].map((name) => [name, { token: randomBytes(32).toString('hex') }]),
     );
     const env = {

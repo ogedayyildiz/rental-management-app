@@ -1,3 +1,4 @@
+import { administrationCases } from './administration.cases.mjs';
 import { deviceCases } from './devices.cases.mjs';
 import { telemetryCases } from './telemetry.cases.mjs';
 import { maintenanceCases } from './maintenance.cases.mjs';
@@ -767,6 +768,13 @@ test(
           app = undefined;
         },
       );
+      await administrationCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
       await deviceCases(suite, db, fixture);
       await analyticsCases(suite, db, fixture, {
         Test,

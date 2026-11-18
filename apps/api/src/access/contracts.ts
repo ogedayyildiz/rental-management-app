@@ -56,6 +56,8 @@ export class AccessError extends Error {
       | 'MACHINE_COMMITTED'
       | 'MACHINE_COMMITMENT_CONFLICT'
       | 'INVALID_TRANSITION'
+      | 'ADMIN_LOCKOUT'
+      | 'ROLE_IN_USE'
       | 'CONFLICT'
       | 'INACTIVE_CUSTOMER',
   ) {

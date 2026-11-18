@@ -1,3 +1,4 @@
+import { administrationMessages } from './administration.js';
 import { maintenanceMessages } from './maintenance.js';
 import { analyticsMessages } from './analytics.js';
 import { telemetryMessages } from './telemetry.js';
@@ -6,6 +7,7 @@ import { machineMessages } from './machines.js';
 import { customerMessages } from './customers.js';
 export const messages = {
   en: {
+    ...administrationMessages.en,
     ...analyticsMessages.en,
     ...telemetryMessages.en,
     ...maintenanceMessages.en,
@@ -27,6 +29,7 @@ export const messages = {
       'The workspace is ready. Business features will be added in the next phase.',
   },
   tr: {
+    ...administrationMessages.tr,
     ...analyticsMessages.tr,
     ...telemetryMessages.tr,
     ...maintenanceMessages.tr,

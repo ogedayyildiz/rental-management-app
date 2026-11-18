@@ -69,8 +69,10 @@ development database. Do not run ordinary database-reset commands to clean E2E d
 | PLATFORM_OPERATOR | platform.organization.create; no tenant membership |
 | TENANT_ADMIN_ALL_BRANCHES | E2E Rental Company; TENANT_ADMINISTRATION permissions; all branches |
 | TENANT_LIMITED | Same company; read permissions; North branch only |
-| TENANT_NO_FINANCE | Same company; operational/analytics view and export permissions, no acquisition/rental-pricing/maintenance-cost grants |
+| TENANT_NO_FINANCE | Same company; operational/analytics view and export permissions, no administration or acquisition/rental-pricing/maintenance-cost grants |
 | SECOND_TENANT_ADMIN | Separate organization and administrative membership |
+| MANAGED_MEMBER | Operational member for role, branch and deactivation workflows |
+| TENANT_MULTI_ORG | Read-only Customers/Machines membership in both organizations |
 
 `builders.mjs` provides test-side organization, branch, identity/membership, customer,
 machine, rental, work-order and plan builders. Fixtures use deterministic names and
@@ -83,7 +85,7 @@ January 2026 rentals and maintenance costs. Known, zero, unknown and mixed-curre
 acquisition examples are deterministic. Six Finance browser scenarios cover period
 filters, exact values, ranking, customer/machine panels, XLSX contents, financial
 omission, selected branches, foreign tenants and platform-only denial. The full suite
-now has 25 scenarios; `pnpm test:e2e --grep finance` also includes the existing
+had 25 scenarios at Finance completion; `pnpm test:e2e --grep finance` also includes the existing
 TENANT_NO_FINANCE regression. No real Auth0 credentials are used.
 
 ## Commands
@@ -184,3 +186,5 @@ Clean-run setup selects Node 24 before installing the pinned pnpm version. No lo
 environment files or Auth0 credentials are needed. This verifies hosted CI, not real
 provider hardware, production ingress, or a production deployment. Existing pg/action
 runtime deprecation warnings were non-failing; tests and assertions were not weakened.
+
+Tenant administration adds eight browser scenarios for settings, custom roles, live authorization/financial redaction, membership scopes/status, branches, invitations, audits, platform/foreign/selected-branch denial, last-admin protection and organization switching. The full suite has 33 scenarios. Run `pnpm test:e2e --grep administration` for these scenarios. The two additional personas use the same isolated identity boundary.

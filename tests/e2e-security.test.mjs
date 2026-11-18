@@ -6,7 +6,7 @@ import { assertE2E, identityFor } from './e2e/isolation.mjs';
 import { Auth0IdentityVerifier } from '../apps/api/dist/authentication/auth0.verifier.js';
 const run = 'a'.repeat(32);
 const identities = Object.fromEntries(
-  ['A', 'B', 'C', 'D', 'E'].map((x) => [
+  ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((x) => [
     x,
     { token: randomBytes(32).toString('hex') },
   ]),
