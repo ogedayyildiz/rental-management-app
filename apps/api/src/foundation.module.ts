@@ -50,6 +50,7 @@ class DatabaseLifecycle {
 
 @Module({
   controllers: [
+    AnalyticsController,
     DeviceController,
     MaintenanceController,
     RentalController,
@@ -60,6 +61,17 @@ class DatabaseLifecycle {
     MachineController,
   ],
   providers: [
+    {
+      provide: AnalyticsService,
+      inject: [DATABASE, DeviceService],
+      useFactory: (db: PrismaClient, devices: DeviceService) =>
+        new AnalyticsService(
+          new PrismaFinanceUnitOfWork(db),
+          () => new Date(),
+          (principal, org, id) =>
+            devices.machine({ principal, requestId: 'finance-read' }, org, id),
+        ),
+    },
     {
       provide: DeviceService,
       inject: [DATABASE],
@@ -143,3 +155,6 @@ class DatabaseLifecycle {
   ],
 })
 export class FoundationModule {}
+import { AnalyticsController } from './analytics/analytics.controller.js';
+import { AnalyticsService } from './analytics/analytics.service.js';
+import { PrismaFinanceUnitOfWork } from './infrastructure/prisma.finance.js';

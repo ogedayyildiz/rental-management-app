@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuth0 } from '../../../../lib/auth0';
 import {
+  analyticsEndpointAllowed,
   maintenanceEndpointAllowed,
   telemetryEndpointAllowed,
   rentalEndpointAllowed,
@@ -16,6 +17,7 @@ async function forward(
   const { path } = await context.params;
   const endpoint = path.join('/');
   const allowed =
+    analyticsEndpointAllowed(request.method, endpoint) ||
     telemetryEndpointAllowed(request.method, endpoint) ||
     maintenanceEndpointAllowed(request.method, endpoint) ||
     rentalEndpointAllowed(request.method, endpoint) ||
@@ -66,7 +68,7 @@ async function forward(
     );
     const isReport =
       request.method === 'GET' &&
-      /^organizations\/[0-9a-f-]{36}\/maintenance\/machines\/[0-9a-f-]{36}\/export\/(pdf|xlsx)$/.test(
+      /^organizations\/[0-9a-f-]{36}\/(?:finance\/export|maintenance\/machines\/[0-9a-f-]{36}\/export\/(pdf|xlsx))$/.test(
         endpoint,
       ) &&
       response.ok;
@@ -83,7 +85,10 @@ async function forward(
           ...(isReport
             ? {
                 'content-disposition':
-                  'attachment; filename="maintenance.' +
+                  'attachment; filename="' +
+                  (endpoint.includes('/finance/')
+                    ? 'finance-estimates.'
+                    : 'maintenance.') +
                   (endpoint.endsWith('/pdf') ? 'pdf' : 'xlsx') +
                   '"',
               }

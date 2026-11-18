@@ -1,4 +1,5 @@
 'use client';
+import { FinancePanel } from '../finance/panel';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { translate } from '@rental/i18n';
@@ -347,6 +348,15 @@ export function CustomerWorkspace() {
               {t('customers.back')}
             </button>
             <h2>{customer.displayName}</h2>
+            {can('finance.analytics.view') && can('machines.read') && (
+              <FinancePanel
+                key={'finance' + org + customer.id}
+                org={org}
+                id={customer.id}
+                kind="customer"
+                locale={locale}
+              />
+            )}
             {customer.active && can('customers.update') && (
               <button
                 disabled={busy}

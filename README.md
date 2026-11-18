@@ -2,9 +2,9 @@
 
 Multi-tenant SaaS platform for equipment rental management, fleet operations, maintenance, telemetry, GPS tracking, CAN-based machine data, remote machine actions, financial analytics, documents, and reporting.
 
-> **Project status:** Customers, Machines, Rentals, Maintenance and simulator-backed Telemetry Phase 1 implemented.
+> **Project status:** Customers, Machines, Rentals, Maintenance, simulator-backed Telemetry and Finance / Analytics Phase 1 implemented.
 >
-> Real Auth0 web authentication, platform bootstrap, two-user tenant onboarding, Customers, Machines and Rentals have real-tenant browser verification. [Hosted CI](docs/19-E2E-TESTING.md#hosted-verification-2026-11-18) passed 111 unit/integration tests and 19 browser scenarios, including Maintenance plans and simulator-backed Telemetry. See the [Maintenance](docs/18-MAINTENANCE-IMPLEMENTATION.md) and [Telemetry](docs/20-TELEMETRY-FOUNDATION.md) implementation guides. Real telemetry hardware/provider access, production ingress and real mobile login remain separate verification gates. Finance implementation is pending an explicit rental-value calculation policy; see [Finance preparation](docs/21-FINANCE-ANALYTICS-IMPLEMENTATION.md).
+> Real Auth0 web authentication, platform bootstrap, two-user tenant onboarding, Customers, Machines and Rentals have real-tenant browser verification. The preceding [hosted CI baseline](docs/19-E2E-TESTING.md#hosted-verification-2026-11-18) passed 111 unit/integration tests and 19 browser scenarios, including Maintenance plans and simulator-backed Telemetry. See the [Maintenance](docs/18-MAINTENANCE-IMPLEMENTATION.md), [Telemetry](docs/20-TELEMETRY-FOUNDATION.md) and [Finance](docs/21-FINANCE-ANALYTICS-IMPLEMENTATION.md) implementation guides. Finance uses the approved ESTIMATE_V1 policy, explicitly separated from invoicing/accounting. Real telemetry hardware/provider access, production ingress and real mobile login remain separate verification gates.
 
 See [Machine implementation and smoke test](docs/16-MACHINE-IMPLEMENTATION.md) for state dimensions, branch scope, specifications and acquisition-cost permissions.
 

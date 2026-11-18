@@ -768,6 +768,13 @@ test(
         },
       );
       await deviceCases(suite, db, fixture);
+      await analyticsCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
       await telemetryCases(suite, db, fixture);
       await maintenanceCases(suite, db, fixture, {
         Test,
@@ -809,3 +816,4 @@ test(
     }
   },
 );
+import { analyticsCases } from './analytics.cases.mjs';

@@ -20,6 +20,7 @@
     "@rental/i18n": "workspace:*",
     "@rental/permissions": "workspace:*",
     "@rental/validation": "workspace:*",
+    "decimal.js": "10.6.0",
     "exceljs": "4.4.0",
     "jose": "6.2.12",
     "pdfkit": "0.20.2",

@@ -541,6 +541,7 @@ export async function machineCases(suite, db, fixture, h) {
         1,
       );
       await create(t, {
+        fleetNumber: 'OTHER-ASSET',
         manufacturer: 'Other',
         model: 'Fork',
         category: 'Forklift',
@@ -562,6 +563,7 @@ export async function machineCases(suite, db, fixture, h) {
         assert.equal(
           (await service.list(t.principal, t.organization.id, q)).items.length,
           5,
+          JSON.stringify(q),
         );
       let cursor;
       const ids = [];

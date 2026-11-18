@@ -80,3 +80,4 @@ export * from './machines.js';
 export * from './rentals.js';
 
 export * from './maintenance.js';
+export * from './analytics.js';

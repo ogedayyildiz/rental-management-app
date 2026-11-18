@@ -69,7 +69,7 @@ development database. Do not run ordinary database-reset commands to clean E2E d
 | PLATFORM_OPERATOR | platform.organization.create; no tenant membership |
 | TENANT_ADMIN_ALL_BRANCHES | E2E Rental Company; TENANT_ADMINISTRATION permissions; all branches |
 | TENANT_LIMITED | Same company; read permissions; North branch only |
-| TENANT_NO_FINANCE | Same company; operational permissions, no acquisition/rental-pricing/maintenance-cost grants |
+| TENANT_NO_FINANCE | Same company; operational/analytics view and export permissions, no acquisition/rental-pricing/maintenance-cost grants |
 | SECOND_TENANT_ADMIN | Separate organization and administrative membership |
 
 `builders.mjs` provides test-side organization, branch, identity/membership, customer,
@@ -77,6 +77,14 @@ machine, rental, work-order and plan builders. Fixtures use deterministic names 
 run-local IDs recorded in the manifest; tests do not depend on production IDs or email.
 Domain setup uses application services where applicable. Browser mutations exercise
 the actual forms; supplemental assertions use the authenticated Next.js API bridge.
+
+Finance adds `finance-fixtures.mjs`, with four service-created machines, completed
+January 2026 rentals and maintenance costs. Known, zero, unknown and mixed-currency
+acquisition examples are deterministic. Six Finance browser scenarios cover period
+filters, exact values, ranking, customer/machine panels, XLSX contents, financial
+omission, selected branches, foreign tenants and platform-only denial. The full suite
+now has 25 scenarios; `pnpm test:e2e --grep finance` also includes the existing
+TENANT_NO_FINANCE regression. No real Auth0 credentials are used.
 
 ## Commands
 

@@ -1,3 +1,4 @@
+
 # Finance and Analytics
 
 **Document:** `09-FINANCE-ANALYTICS.md`  
@@ -1038,3 +1039,10 @@ Accounting / ERP Integration
 Authentication / Permissions
 → financial access control
 ```
+## Phase 1 implementation policy
+
+> Phase 1 implementation uses the owner-approved **ESTIMATE_V1** operational
+> valuation policy. Its rounding, fixed/manual totals, period allocation, source
+> permissions and accounting limitations are specified in
+> [Finance implementation](21-FINANCE-ANALYTICS-IMPLEMENTATION.md).
+> These estimates are not invoice totals, billed revenue or accounting revenue.

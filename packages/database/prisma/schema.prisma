@@ -569,6 +569,7 @@ model Rental {
   @@index([organizationId, branchId, status, createdAt, id])
   @@index([organizationId, customerId, createdAt, id])
   @@index([organizationId, plannedStartAt, plannedEndAt])
+  @@index([organizationId, status, actualStartAt, actualEndAt], map: "Rental_finance_period")
 }
 
 model RentalItem {

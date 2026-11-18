@@ -2647,3 +2647,10 @@ Security:
 ## Maintenance implementation permissions
 
 The implemented maintenance permission catalog and action requirements are documented in [Maintenance implementation](18-MAINTENANCE-IMPLEMENTATION.md). Cost viewing and editing remain separate (maintenance.costs.view and maintenance.costs.edit); technical block/release and export require explicit grants. Existing TENANT_ADMINISTRATION template roles receive these grants through the audited migration. PlatformAccess confers none of them.
+## Finance / Analytics Phase 1 implementation
+
+`finance.analytics.view` and `finance.analytics.export` are tenant permissions.
+They do not imply acquisition-cost, rental-pricing or maintenance-cost visibility.
+The backend omits restricted source amounts and every dependent contribution/recovery
+metric, including from XLSX. PlatformAccess grants no tenant analytics. See the exact
+source permission matrix in [Finance implementation](21-FINANCE-ANALYTICS-IMPLEMENTATION.md).

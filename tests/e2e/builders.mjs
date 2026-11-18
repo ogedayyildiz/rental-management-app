@@ -149,20 +149,20 @@ export async function seed(db, env) {
       'maintenance.read',
       'device.read',
       'telemetry.read',
+      'finance.analytics.view',
     ],
     north,
   );
-  await member(
-    db,
-    'TENANT_NO_FINANCE',
-    org,
-    tenantPermissions.filter(
+  await member(db, 'TENANT_NO_FINANCE', org, [
+    ...tenantPermissions.filter(
       (k) =>
         !k.startsWith('finance.') &&
         !k.includes('.pricing.') &&
         !k.includes('.costs.'),
     ),
-  );
+    'finance.analytics.view',
+    'finance.analytics.export',
+  ]);
   await member(db, 'SECOND_TENANT_ADMIN', second, tenantPermissions);
   const auth = new AuthenticationService(
     { verify: async (token) => identityFor(env, token) },
@@ -172,6 +172,7 @@ export async function seed(db, env) {
     `Bearer ${JSON.parse(env.RENTAL_E2E_IDENTITIES).TENANT_ADMIN_ALL_BRANCHES.token}`,
   );
   const b = builders(db, p, org);
+  const finance = await financeFixtures(db, p, org.id, north.id);
   const customer = await b.customer(),
     customer2 = await b.customer({ displayName: 'E2E Second Active Customer' });
   const inactive = await b.customer({ displayName: 'E2E Archived Customer' });
@@ -248,6 +249,7 @@ export async function seed(db, env) {
     randomUUID(),
   );
   return {
+    finance,
     org,
     second,
     north,
@@ -263,3 +265,4 @@ export async function seed(db, env) {
     foreignDevice,
   };
 }
+import { financeFixtures } from '../finance-fixtures.mjs';

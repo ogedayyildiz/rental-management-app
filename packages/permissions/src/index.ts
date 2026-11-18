@@ -1,4 +1,6 @@
 export const tenantPermissions = [
+  'finance.analytics.view',
+  'finance.analytics.export',
   'device.read',
   'device.manage',
   'device.assign',

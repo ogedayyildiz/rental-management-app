@@ -1,4 +1,5 @@
 'use client';
+import { FinancePanel } from '../finance/panel';
 import { MachineMaintenanceHistory } from '../maintenance/machine-history';
 import { MachineTelemetry } from '../devices/machine-telemetry';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -326,6 +327,15 @@ export function MachineWorkspace({
                   <MachineMaintenanceHistory
                     org={org}
                     machineId={detail.id}
+                    locale={locale}
+                  />
+                )}
+                {can('finance.analytics.view') && (
+                  <FinancePanel
+                    key={'finance' + org + detail.id}
+                    org={org}
+                    id={detail.id}
+                    kind="machine"
                     locale={locale}
                   />
                 )}

@@ -253,3 +253,9 @@ Planned Maintenance workshop periods now participate in the existing transaction
 capacity matcher. Service-state changes are owned by Maintenance restrictions;
 Rental still exclusively owns rentalState. A returned machine can remain technically
 blocked. See [Maintenance implementation](18-MAINTENANCE-IMPLEMENTATION.md#rental-coordination).
+## Finance read boundary
+
+The approved [ESTIMATE_V1 Finance policy](21-FINANCE-ANALYTICS-IMPLEMENTATION.md)
+now derives explicitly labelled operational estimates from agreed Rental terms,
+actual dates and preserved assignments. Rental continues to own source terms and
+workflow; it stores no calculated analytics or authoritative invoice totals.
