@@ -1,3 +1,4 @@
+import { currentTelemetry } from './current-telemetry.js';
 import { Prisma, type PrismaClient } from '@rental/database';
 import {
   devicePatch,
@@ -246,27 +247,12 @@ export class DeviceService {
         const f = parse(historyQuery, q);
         return tx.$queryRaw`SELECT signal,value,device,recorded,received,quality,healthy FROM telemetry_measurement WHERE org=${o}::uuid AND machine=${id}::uuid AND recorded>=${new Date(f.from)} AND recorded<${new Date(f.to)} AND signal IN (${Prisma.join(f.signals)}) ORDER BY recorded DESC,event,signal LIMIT ${f.limit}`;
       }
-      const seconds = Number(process.env['TELEMETRY_FRESH_SECONDS'] ?? 300);
-      if (!Number.isFinite(seconds) || seconds <= 0)
-        throw Error('Invalid telemetry freshness configuration');
-      const cutoff = new Date(Date.now() - seconds * 1000);
-      const signals =
-        await tx.$queryRaw`SELECT DISTINCT ON (s.signal) s.signal,s.value,s.recorded,s.received,s.device,s.quality,s.healthy,(s.recorded<${cutoff} OR i."removedAt" IS NOT NULL) stale FROM telemetry_latest s JOIN "TrackingDevice" d ON d.id=s.device JOIN "DeviceInstallation" i ON i.id=s.installation WHERE s.org=${o}::uuid AND s.machine=${id}::uuid ORDER BY s.signal,(i."removedAt" IS NULL AND s.recorded>=${cutoff}) DESC,(i."removedAt" IS NULL) DESC,s.healthy DESC,coalesce((d.priorities->>s.signal)::int,0) DESC,s.quality DESC,s.recorded DESC,s.device,s.installation`;
-      const [last] = await tx.$queryRaw<
-        { last: Date | null; live: Date | null }[]
-      >`SELECT max(e.recorded) last,max(e.recorded) FILTER(WHERE i."removedAt" IS NULL) live FROM telemetry_contact e JOIN "DeviceInstallation" i ON i.id=e.installation WHERE i."organizationId"=${o}::uuid AND i."machineId"=${id}::uuid`;
-      const faults = c.permissions.includes('fault.read')
-        ? await tx.$queryRaw`SELECT f.code,f.severity,f.first_seen,f.last_seen,f.occurrences,i."trackingDeviceId" device FROM telemetry_fault_current f JOIN "DeviceInstallation" i ON i.id=f.installation WHERE i."organizationId"=${o}::uuid AND i."machineId"=${id}::uuid AND i."removedAt" IS NULL AND f.active ORDER BY code,device`
-        : undefined;
+      const state = (await currentTelemetry(tx, c, [id])).get(id)!;
       return {
-        connectivity: !last?.last
-          ? 'UNKNOWN'
-          : last.live && last.live >= cutoff
-            ? 'ONLINE'
-            : 'OFFLINE',
-        lastUpdate: last?.last,
-        signals,
-        faults,
+        connectivity: state.connectivity,
+        lastUpdate: state.lastUpdate,
+        signals: state.signals,
+        faults: state.faults,
       };
     });
   }

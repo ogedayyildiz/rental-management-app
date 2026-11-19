@@ -1,4 +1,7 @@
 'use client';
+import { safeErrorKey } from '../../lib/ui-error';
+import { useAppLocale } from '../app-shell';
+import { accountResponse } from '../../lib/account';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createRentalClient, RentalApiError } from '@rental/api-client';
@@ -6,7 +9,7 @@ import type { RentalAction } from '@rental/api-client';
 import { machineAccessSchema, rentalStatusSchema } from '@rental/validation';
 import type { RentalView, RentalCatalog } from '@rental/validation';
 import { translate } from '@rental/i18n';
-import type { Locale, TranslationKey } from '@rental/i18n';
+import type { TranslationKey } from '@rental/i18n';
 import { RentalForm, fromUtc } from './rental-form';
 import { RentalDetail } from './rental-detail';
 const api = createRentalClient('/api/backend');
@@ -25,7 +28,7 @@ export function RentalWorkspace({
   initialId?: string;
   initialOrg?: string;
 }) {
-  const [locale, setLocale] = useState<Locale>('en'),
+  const [locale] = useAppLocale(),
     [orgs, setOrgs] = useState<Organization[]>([]),
     [org, setOrg] = useState(''),
     [page, setPage] = useState<{
@@ -53,17 +56,20 @@ export function RentalWorkspace({
   const fail = useCallback(
     (e: unknown) =>
       setError(
-        e instanceof RentalApiError
-          ? e.code === 'MACHINE_INELIGIBLE'
-            ? 'rentals.ineligible'
-            : e.code === 'INVALID_TRANSITION'
-              ? 'rentals.transition'
-              : e.status === 409
-                ? 'rentals.conflict'
-                : e.status === 400
-                  ? 'rentals.invalid'
-                  : 'rentals.error'
-          : 'rentals.error',
+        safeErrorKey(
+          e,
+          e instanceof RentalApiError
+            ? e.code === 'MACHINE_INELIGIBLE'
+              ? 'rentals.ineligible'
+              : e.code === 'INVALID_TRANSITION'
+                ? 'rentals.transition'
+                : e.status === 409
+                  ? 'rentals.conflict'
+                  : e.status === 400
+                    ? 'rentals.invalid'
+                    : 'rentals.error'
+            : 'rentals.error',
+        ),
       ),
     [],
   );
@@ -94,7 +100,7 @@ export function RentalWorkspace({
     const requestEpoch = epoch;
     void (async () => {
       try {
-        const response = await fetch('/api/backend/me', { cache: 'no-store' });
+        const response = await accountResponse();
         if (!response.ok) throw new Error();
         const me = machineAccessSchema.parse(await response.json());
         if (!alive) return;
@@ -102,13 +108,24 @@ export function RentalWorkspace({
           o.access?.permissions.includes('rentals.read'),
         );
         setOrgs(choices);
-        const selected =
-          choices.find((o) => o.access?.organizationId === initialOrg) ??
-          choices[0];
+        const selected = initialOrg
+          ? choices.find((o) => o.access?.organizationId === initialOrg)
+          : choices[0];
         if (selected?.access) {
           const id = selected.access.organizationId;
           setOrg(id);
-          await load(id, '');
+          const params = new URLSearchParams(window.location.search);
+          const filter = new URLSearchParams();
+          for (const key of ['status', 'branchId'])
+            if (params.get(key)) filter.set(key, params.get(key)!);
+          setQuery(filter.toString());
+          await load(id, filter.toString());
+          if (
+            alive &&
+            params.get('create') === '1' &&
+            selected.access.permissions.includes('rentals.create')
+          )
+            setForm(true);
           if (initialId && id === initialOrg) {
             const rental = await api.get(id, initialId);
             if (alive) setRow(rental);
@@ -202,19 +219,6 @@ export function RentalWorkspace({
     <main className="rental-workspace">
       <header>
         <h1>{t('rentals.title')}</h1>
-        <nav>
-          <Link href="/">{t('app.title')}</Link> ·{' '}
-          <Link href="/customers">{t('customers.title')}</Link> ·{' '}
-          <Link href="/machines">{t('machines.title')}</Link>
-        </nav>
-        <select
-          aria-label={t('customers.language')}
-          value={locale}
-          onChange={(e) => setLocale(e.target.value === 'tr' ? 'tr' : 'en')}
-        >
-          <option value="en">English</option>
-          <option value="tr">Türkçe</option>
-        </select>
       </header>
       {error && (
         <p className="rental-error" role="alert">
@@ -225,36 +229,6 @@ export function RentalWorkspace({
       {org && (
         <>
           <div className="rental-actions">
-            <select
-              aria-label={t('customers.organization')}
-              disabled={busy}
-              value={org}
-              onChange={(e) => {
-                const id = e.target.value;
-                setOrg(id);
-                setRow(null);
-                setForm(false);
-                setPage({ items: [], nextCursor: null });
-                setCatalog({
-                  categories: [],
-                  models: [],
-                  branches: [],
-                  timezone: 'UTC',
-                });
-                setQuery('');
-                setCursors([]);
-                void load(id, '');
-              }}
-            >
-              {orgs.map((o) => (
-                <option
-                  key={o.access?.organizationId}
-                  value={o.access?.organizationId}
-                >
-                  {o.name}
-                </option>
-              ))}
-            </select>
             {can('rentals.create') && (
               <button
                 disabled={busy}
@@ -301,7 +275,12 @@ export function RentalWorkspace({
                 </label>
                 <label>
                   {t('rentals.state')}
-                  <select name="status">
+                  <select
+                    name="status"
+                    defaultValue={
+                      new URLSearchParams(query).get('status') ?? ''
+                    }
+                  >
                     <option value="">{t('rentals.all')}</option>
                     {rentalStatusSchema.options.map((s) => (
                       <option key={s} value={s}>
@@ -312,7 +291,12 @@ export function RentalWorkspace({
                 </label>
                 <label>
                   {t('rentals.branch')}
-                  <select name="branchId">
+                  <select
+                    name="branchId"
+                    defaultValue={
+                      new URLSearchParams(query).get('branchId') ?? ''
+                    }
+                  >
                     <option value="">{t('rentals.all')}</option>
                     {catalog.branches.map((b) => (
                       <option key={b.id} value={b.id}>

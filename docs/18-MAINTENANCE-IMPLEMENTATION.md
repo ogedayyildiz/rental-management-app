@@ -247,3 +247,7 @@ profitability or accounting. Parts are consumption descriptions only. No custome
 field service, return inspection subsystem, recurrence background jobs, notifications,
 mobile management UI or arbitrary workflow builder. Existing architecture and service
 state dimensions are retained; no new ADR is required for this phase.
+
+## Operations integration
+
+The [Operations dashboard](23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md) consumes the existing work-order/plan deadlines and service restrictions without changing them. Calendar plans are readable under `maintenance.read`; management controls continue to require `maintenance.plans.manage`. Dashboard plan links select the machine's plan assignments. Notifications do not generate or complete work orders.

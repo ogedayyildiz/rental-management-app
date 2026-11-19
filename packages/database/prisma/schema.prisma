@@ -126,6 +126,8 @@ model ExternalIdentity {
 }
 
 model Membership {
+  notificationInteractions NotificationInteraction[]
+  notificationPreference NotificationPreference?
   assignedWorkOrders WorkOrder[]
 
   id             String             @id @default(uuid()) @db.Uuid
@@ -875,4 +877,25 @@ model DeviceInstallation {
   machine          Machine        @relation(fields: [organizationId, machineId], references: [organizationId, id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([organizationId, machineId, installedAt])
+}
+
+// Interaction-only notification state. Source conditions are derived and re-authorized on every read/write.
+model NotificationInteraction {
+  organizationId String @db.Uuid
+  membershipId String @db.Uuid
+  key String @db.Char(64)
+  readAt DateTime? @db.Timestamptz(3)
+  acknowledgedAt DateTime? @db.Timestamptz(3)
+  dismissedAt DateTime? @db.Timestamptz(3)
+  membership Membership @relation(fields: [organizationId, membershipId], references: [organizationId, id], onDelete: Cascade)
+  @@id([organizationId, membershipId, key])
+}
+model NotificationPreference {
+  organizationId String @db.Uuid
+  membershipId String @db.Uuid
+  enabled Boolean @default(true)
+  domains String[] @default(["RENTAL", "MAINTENANCE", "TELEMETRY"])
+  lowSocPercent Int @default(20)
+  membership Membership @relation(fields: [organizationId, membershipId], references: [organizationId, id], onDelete: Cascade)
+  @@id([organizationId, membershipId])
 }

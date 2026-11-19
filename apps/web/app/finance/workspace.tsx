@@ -1,7 +1,9 @@
 'use client';
+import { useAppLocale } from '../app-shell';
+import { accountResponse } from '../../lib/account';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { translate, type Locale, type TranslationKey } from '@rental/i18n';
+import { translate, type TranslationKey } from '@rental/i18n';
 import { createAnalyticsClient } from '@rental/api-client';
 import {
   machineAccessSchema,
@@ -20,7 +22,7 @@ export function FinanceWorkspace({
   initialMachine: string;
   initialCustomer: string;
 }) {
-  const [locale, L] = useState<Locale>('en'),
+  const [locale] = useAppLocale(),
     [orgs, O] = useState<Org[]>([]),
     [org, S] = useState(initialOrg),
     [loaded, Loaded] = useState(false),
@@ -60,7 +62,7 @@ export function FinanceWorkspace({
     orgs.find((x) => x.id === org)?.permissions.includes(key);
   useEffect(() => {
     let live = true;
-    void fetch('/api/backend/me')
+    void accountResponse()
       .then((r) => r.json())
       .then((v) => {
         if (!live) return;
@@ -78,10 +80,18 @@ export function FinanceWorkspace({
         );
         O(rows);
         S((current) =>
-          rows.some((x) => x.id === current) ? current : (rows[0]?.id ?? ''),
+          rows.some((x) => x.id === current)
+            ? current
+            : !initialOrg
+              ? (rows[0]?.id ?? '')
+              : '',
         );
         Loaded(true);
-        if (!rows.length) B(false);
+        if (
+          !rows.length ||
+          (initialOrg && !rows.some((r) => r.id === initialOrg))
+        )
+          B(false);
       })
       .catch(() => {
         if (live) {
@@ -93,7 +103,7 @@ export function FinanceWorkspace({
     return () => {
       live = false;
     };
-  }, []);
+  }, [initialOrg]);
   useEffect(() => {
     if (!org || !loaded) return;
     let live = true;
@@ -179,57 +189,12 @@ export function FinanceWorkspace({
     <main className="finance-page">
       <header>
         <h1>{t('finance.title')}</h1>
-        <Link href="/">{t('app.title')}</Link> ·{' '}
-        <Link href="/machines">{t('machines.title')}</Link> ·{' '}
-        <Link href="/customers">{t('customers.title')}</Link>
-        <select
-          aria-label={t('iot.language')}
-          value={locale}
-          onChange={(e) => L(e.target.value as Locale)}
-        >
-          <option value="en">English</option>
-          <option value="tr">Türkçe</option>
-        </select>
       </header>
       <p className="finance-notice">{t('finance.notice')}</p>
-      {loaded && !orgs.length && <p>{t('finance.noAccess')}</p>}
+      {loaded && !org && <p>{t('finance.noAccess')}</p>}
       {error && <p role="alert">{t('finance.error')}</p>}
-      {orgs.length > 0 && (
+      {org && orgs.length > 0 && (
         <>
-          <label>
-            {t('iot.organization')}
-            <select
-              value={org}
-              onChange={(e) => {
-                R(null);
-                M('');
-                C('');
-                Branch('');
-                Model('');
-                Category('');
-                Catalog(null);
-                Status('');
-                P('THIS_MONTH');
-                G('machine');
-                Cursors([]);
-                Sort('ID');
-                SortCurrency('');
-                changeQuery(
-                  new URLSearchParams({
-                    preset: 'THIS_MONTH',
-                    group: 'machine',
-                  }),
-                );
-                S(e.target.value);
-              }}
-            >
-              {orgs.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </label>
           <form
             className="finance-filters"
             onSubmit={(e) => {

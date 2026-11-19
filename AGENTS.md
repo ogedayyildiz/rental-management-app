@@ -861,3 +861,7 @@ The implementation must remain consistent with the documented domain model and a
 ## Tenant administration implementation
 
 Before changing organization settings, memberships, roles, branches, invitations or audit reads, also read `docs/22-TENANT-ADMINISTRATION-IMPLEMENTATION.md`. Preserve its approved ALL_BRANCHES administration policy, actor permission ceiling and transactional last-administrator protection. Do not expose arbitrary audit metadata or convert tenant administration into global User/provider administration.
+
+## Operations and notification reads
+
+Before changing the operational home, derived attention, notification interactions or shared web navigation, read `docs/23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md`. Reuse source permissions and branch predicates; never persist duplicate business statuses or expose financial fields through an operations summary. Notification acknowledgement/dismissal must remain personal and cannot resolve source conditions.

@@ -1,3 +1,6 @@
+import { OperationsController } from './operations/operations.controller.js';
+import { OperationsService } from './operations/operations.service.js';
+import { PrismaOperationsUnitOfWork } from './infrastructure/prisma.operations.js';
 import { AdministrationController } from './administration/administration.controller.js';
 import { AdministrationService } from './administration/administration.service.js';
 import { PrismaAdministrationUnitOfWork } from './infrastructure/prisma.administration.js';
@@ -53,6 +56,7 @@ class DatabaseLifecycle {
 
 @Module({
   controllers: [
+    OperationsController,
     AdministrationController,
     AnalyticsController,
     DeviceController,
@@ -65,6 +69,12 @@ class DatabaseLifecycle {
     MachineController,
   ],
   providers: [
+    {
+      provide: OperationsService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new OperationsService(new PrismaOperationsUnitOfWork(db)),
+    },
     {
       provide: AdministrationService,
       inject: [DATABASE],

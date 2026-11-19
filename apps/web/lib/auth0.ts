@@ -28,7 +28,10 @@ export function getAuth0(): Auth0Client {
       session: { absoluteDuration: 8 * 60 * 60, inactivityDuration: 60 * 60 },
       onCallback: async (error) =>
         NextResponse.redirect(
-          new URL(error ? '/?authError=1' : '/', process.env.APP_BASE_URL),
+          new URL(
+            error ? '/?authError=1' : '/dashboard',
+            process.env.APP_BASE_URL,
+          ),
         ),
     });
   }

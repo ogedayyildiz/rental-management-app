@@ -1,7 +1,9 @@
 'use client';
+import { useAppLocale } from '../app-shell';
+import { accountResponse, invalidateAccount } from '../../lib/account';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { translate, type Locale, type TranslationKey } from '@rental/i18n';
+import { translate, type TranslationKey } from '@rental/i18n';
 import { administrationAccountSchema } from '@rental/validation';
 import { SettingsPanel } from './panel';
 export type Context = ReturnType<
@@ -22,7 +24,7 @@ export function SettingsWorkspace({
   section: string;
   initialOrg: string;
 }) {
-  const [locale, L] = useState<Locale>('en'),
+  const [locale] = useAppLocale(),
     [org, O] = useState(initialOrg),
     [data, D] = useState<ReturnType<
       typeof administrationAccountSchema.parse
@@ -33,7 +35,7 @@ export function SettingsWorkspace({
   const t = (k: string) => translate(locale, ('admin.' + k) as TranslationKey);
   useEffect(() => {
     let live = true;
-    void fetch('/api/backend/me', { cache: 'no-store' })
+    void accountResponse()
       .then(async (r) => {
         if (!r.ok) throw Error();
         const v: unknown = await r.json();
@@ -67,55 +69,22 @@ export function SettingsWorkspace({
     access.permissions.includes(sections[s] ?? '') &&
     (s === 'branches' || access.branchScope === 'ALL_BRANCHES');
   function refresh() {
+    invalidateAccount();
     D(null);
     E(false);
     R((n) => n + 1);
   }
-  function switchOrg(id: string) {
-    O(id);
-    D(null);
-    E(false);
-    R((n) => n + 1);
-    window.history.replaceState(
-      null,
-      '',
-      `/settings${section === 'account' ? '' : '/' + section}?organizationId=${encodeURIComponent(id)}`,
-    );
-  }
+
   return (
     <main className="customer-workspace">
       <header>
         <h1>{t('title')}</h1>
-        <Link href="/">{t('home')}</Link>
-        <label>
-          {t('language')}
-          <select value={locale} onChange={(e) => L(e.target.value as Locale)}>
-            <option value="en">English</option>
-            <option value="tr">Türkçe</option>
-          </select>
-        </label>
       </header>
       {error && <p role="alert">{t('error')}</p>}
       {!data && !error && <p role="status">{t('loading')}</p>}
       {data && (
         <>
           <div className="customer-toolbar">
-            <label>
-              {t('activeOrganization')}
-              <select value={org} onChange={(e) => switchOrg(e.target.value)}>
-                {data.organizations.map(
-                  (x) =>
-                    x.access && (
-                      <option
-                        key={x.access.organizationId}
-                        value={x.access.organizationId}
-                      >
-                        {x.name}
-                      </option>
-                    ),
-                )}
-              </select>
-            </label>
             <button onClick={refresh}>{t('refresh')}</button>
           </div>
           <p className="customer-hint">{t('unsaved')}</p>
@@ -175,21 +144,6 @@ export function SettingsWorkspace({
                   </li>
                 ))}
               </ul>
-              <nav className="settings-nav">
-                {[
-                  ['customers', 'customers.read'],
-                  ['machines', 'machines.read'],
-                  ['rentals', 'rentals.read'],
-                  ['maintenance', 'maintenance.read'],
-                  ['finance', 'finance.analytics.view'],
-                ]
-                  .filter(([, p]) => access.permissions.includes(p!))
-                  .map(([path]) => (
-                    <Link key={path} href={`/${path}?organizationId=${org}`}>
-                      {translate(locale, `${path}.title` as TranslationKey)}
-                    </Link>
-                  ))}
-              </nav>
             </section>
           ) : can(section) ? (
             <SettingsPanel

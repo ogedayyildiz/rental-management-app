@@ -187,4 +187,22 @@ environment files or Auth0 credentials are needed. This verifies hosted CI, not 
 provider hardware, production ingress, or a production deployment. Existing pg/action
 runtime deprecation warnings were non-failing; tests and assertions were not weakened.
 
-Tenant administration adds eight browser scenarios for settings, custom roles, live authorization/financial redaction, membership scopes/status, branches, invitations, audits, platform/foreign/selected-branch denial, last-admin protection and organization switching. The full suite has 33 scenarios. Run `pnpm test:e2e --grep administration` for these scenarios. The two additional personas use the same isolated identity boundary.
+Tenant administration adds eight browser scenarios for settings, custom roles, live authorization/financial redaction, membership scopes/status, branches, invitations, audits, platform/foreign/selected-branch denial, last-admin protection and organization switching. That milestone brought the suite to 33 scenarios. Run `pnpm test:e2e --grep administration` for these scenarios. The two additional personas use the same isolated identity boundary.
+
+
+## Operations dashboard coverage
+
+Operations adds twelve scenarios, bringing the suite to 45. Run
+`pnpm test:e2e --grep operations` for dashboard, personal notification preferences
+and interactions, branch/platform/organization isolation, canonical simulator
+alerts, source-only telemetry access, search, EN/TR and responsive navigation.
+The full suite also checks inline customer keyboard focus/draft preservation and
+partial returns before explicit Rental completion. Existing domain scenarios stay
+mandatory; no personal Auth0 login is used.
+
+The runner now tracks whether database creation succeeded and releases its lock
+in a final cleanup block even if a database cleanup request fails. An unavailable
+Docker engine must not leave a lock or attempt to drop an uncreated database.
+
+See [Operations implementation](23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md) for
+metric, authorization and notification semantics.

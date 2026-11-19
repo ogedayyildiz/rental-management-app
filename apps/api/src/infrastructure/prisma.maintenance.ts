@@ -32,7 +32,7 @@ const include = {
   materials: true,
   costs: true,
 } as const;
-function scope(c: TenantContext): Prisma.WorkOrderWhereInput {
+export function maintenanceScope(c: TenantContext): Prisma.WorkOrderWhereInput {
   assertTenantContext(c);
   return {
     organizationId: c.organizationId,
@@ -117,7 +117,7 @@ export class PrismaMaintenanceRepository implements MaintenanceRepository {
   }
   async find(c: TenantContext, id: string, now: Date) {
     const row = await this.db.workOrder.findFirst({
-      where: { ...scope(c), id },
+      where: { ...maintenanceScope(c), id },
       include,
     });
     return row ? this.view(row, now) : null;
@@ -173,7 +173,7 @@ export class PrismaMaintenanceRepository implements MaintenanceRepository {
       });
     }
     const rows = await this.db.workOrder.findMany({
-      where: { ...scope(c), AND: and },
+      where: { ...maintenanceScope(c), AND: and },
       include,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: q.limit + 1,
@@ -295,7 +295,7 @@ export class PrismaMaintenanceRepository implements MaintenanceRepository {
   }
   async update(c: TenantContext, id: string, input: WorkOrderPatch) {
     await this.db.workOrder.updateMany({
-      where: { ...scope(c), id },
+      where: { ...maintenanceScope(c), id },
       data: {
         ...Object.fromEntries(
           Object.entries(input).filter(([, value]) => value !== undefined),
@@ -313,7 +313,7 @@ export class PrismaMaintenanceRepository implements MaintenanceRepository {
     reason?: string,
   ) {
     await this.db.workOrder.updateMany({
-      where: { ...scope(c), id },
+      where: { ...maintenanceScope(c), id },
       data: {
         status,
         updatedById: c.userId,

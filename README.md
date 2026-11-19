@@ -797,3 +797,5 @@ See [E2E testing](docs/19-E2E-TESTING.md) for setup, isolation, debugging and CI
 The [telemetry foundation](docs/20-TELEMETRY-FOUNDATION.md) defines tenant-owned tracking devices and historical machine installations.
 
 Tenant settings, memberships, roles, invitations, branches and immutable audit reads are documented in [Tenant administration](docs/22-TENANT-ADMINISTRATION-IMPLEMENTATION.md). Open `/settings` with an authorized tenant membership.
+
+Operations, derived notifications, shared EN/TR navigation and scoped global search are documented in [Operations dashboard](docs/23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md). The authenticated operational landing page is `/dashboard`; `/notifications` contains personal in-app attention and preferences. Finance remains a separate operational-estimates area.

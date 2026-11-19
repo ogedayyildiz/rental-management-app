@@ -81,26 +81,27 @@ function view(row: Row) {
     })),
   });
 }
-export class PrismaRentalRepository implements RentalRepository {
-  constructor(private readonly db: Prisma.TransactionClient) {}
-  private scope(c: TenantContext): Prisma.RentalWhereInput {
-    assertTenantContext(c);
-    return {
-      organizationId: c.organizationId,
-      ...(c.branchScope === 'ALL_BRANCHES'
-        ? {}
-        : {
-            branchId: { in: [...c.branchIds] },
-            items: {
-              every: {
-                assignments: {
-                  every: { machine: { branchId: { in: [...c.branchIds] } } },
-                },
+export function rentalScope(c: TenantContext): Prisma.RentalWhereInput {
+  assertTenantContext(c);
+  return {
+    organizationId: c.organizationId,
+    ...(c.branchScope === 'ALL_BRANCHES'
+      ? {}
+      : {
+          branchId: { in: [...c.branchIds] },
+          items: {
+            every: {
+              assignments: {
+                every: { machine: { branchId: { in: [...c.branchIds] } } },
               },
             },
-          }),
-    };
-  }
+          },
+        }),
+  };
+}
+
+export class PrismaRentalRepository implements RentalRepository {
+  constructor(private readonly db: Prisma.TransactionClient) {}
   async lock(organizationId: string) {
     // Updating the row version serializes scheduling writes, including initially empty capacity pools.
     // A waiting Serializable transaction retries through a safe 409 rather than reading a stale schedule.
@@ -219,7 +220,7 @@ export class PrismaRentalRepository implements RentalRepository {
     }
     const rows = await this.db.rental.findMany({
       where: {
-        ...this.scope(c),
+        ...rentalScope(c),
         ...(q.customerId ? { customerId: q.customerId } : {}),
         ...(q.status ? { status: q.status } : {}),
         AND: and,
@@ -238,7 +239,7 @@ export class PrismaRentalRepository implements RentalRepository {
   }
   async find(c: TenantContext, id: string) {
     const row = await this.db.rental.findFirst({
-      where: { ...this.scope(c), id },
+      where: { ...rentalScope(c), id },
       include,
     });
     return row ? view(row) : null;
@@ -359,7 +360,7 @@ export class PrismaRentalRepository implements RentalRepository {
   async edit(c: TenantContext, id: string, input: RentalPatch) {
     const { items, ...data } = input;
     const result = await this.db.rental.updateMany({
-      where: { ...this.scope(c), id },
+      where: { ...rentalScope(c), id },
       data: {
         ...(data.customerId !== undefined
           ? { customerId: data.customerId }
@@ -433,7 +434,7 @@ export class PrismaRentalRepository implements RentalRepository {
     } = {},
   ) {
     const result = await this.db.rental.updateMany({
-      where: { ...this.scope(c), id },
+      where: { ...rentalScope(c), id },
       data: { status, ...extra, updatedById: c.userId },
     });
     if (result.count !== 1) throw new AccessError('NOT_FOUND');

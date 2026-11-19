@@ -89,3 +89,5 @@ export * from './rentals.js';
 export * from './maintenance.js';
 export * from './analytics.js';
 export * from './administration.js';
+
+export * from './operations.js';

@@ -1,3 +1,4 @@
+import { operationsFixtures } from '../operations-fixtures.mjs';
 import { randomUUID } from 'node:crypto';
 import {
   tenantPermissions,
@@ -286,7 +287,15 @@ export async function seed(db, env) {
     { kind: 'LABOR', amount: '98765.4321', currency: 'TRY' },
     randomUUID(),
   );
+  const operations = await operationsFixtures(
+    db,
+    p,
+    org.id,
+    north.id,
+    south.id,
+  );
   return {
+    operations,
     finance,
     org,
     second,

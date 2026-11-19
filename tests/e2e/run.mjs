@@ -32,6 +32,7 @@ local.pathname = '/postgres';
 const admin = createDatabase(local.href);
 const children = [];
 let dbName, db, lock;
+let databaseCreated = false;
 let cleanupPromise;
 async function drop(name) {
   if (!/^rental_e2e_[a-f0-9]{32}$/.test(name))
@@ -65,11 +66,14 @@ async function cleanupOnce() {
     }
   }
   await db?.$disconnect();
-  if (dbName) await drop(dbName);
-  await admin.$disconnect();
-  if (lock) {
-    await lock.close();
-    await rm(resolve(scratch, 'run.lock'), { force: true });
+  try {
+    if (dbName && databaseCreated) await drop(dbName);
+  } finally {
+    await admin.$disconnect();
+    if (lock) {
+      await lock.close();
+      await rm(resolve(scratch, 'run.lock'), { force: true });
+    }
   }
 }
 for (const signal of ['SIGINT', 'SIGTERM'])
@@ -132,6 +136,7 @@ try {
     const run = randomBytes(16).toString('hex');
     dbName = `rental_e2e_${run}`;
     await admin.$executeRawUnsafe(`CREATE DATABASE "${dbName}"`);
+    databaseCreated = true;
     local.pathname = '/' + dbName;
     const identities = Object.fromEntries(
       [

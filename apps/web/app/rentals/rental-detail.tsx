@@ -240,6 +240,9 @@ export function RentalDetail({
             </button>
           )}
         </div>
+        {row.status === 'ACTIVE' && (
+          <p role="status">{t('ops.returnBeforeComplete')}</p>
+        )}
         <h3>{t('rentals.items')}</h3>
         {items.map((item, n) => (
           <section className="rental-panel" key={item.id}>

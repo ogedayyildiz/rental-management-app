@@ -1,4 +1,7 @@
 'use client';
+import { safeErrorKey } from '../../lib/ui-error';
+import { useAppLocale } from '../app-shell';
+import { accountResponse } from '../../lib/account';
 import { FinancePanel } from '../finance/panel';
 import { MachineMaintenanceHistory } from '../maintenance/machine-history';
 import { MachineTelemetry } from '../devices/machine-telemetry';
@@ -14,7 +17,7 @@ import {
 } from '@rental/validation';
 import type { MachineView, MachinePage } from '@rental/validation';
 import { translate } from '@rental/i18n';
-import type { Locale, TranslationKey } from '@rental/i18n';
+import type { TranslationKey } from '@rental/i18n';
 import {
   MachineForm,
   measurementFields,
@@ -36,7 +39,7 @@ export function MachineWorkspace({
   initialId?: string;
   initialOrg?: string;
 }) {
-  const [locale, setLocale] = useState<Locale>('en'),
+  const [locale] = useAppLocale(),
     [orgs, setOrgs] = useState<Organization[]>([]),
     [org, setOrg] = useState(''),
     [page, setPage] = useState<MachinePage>({ items: [], nextCursor: null }),
@@ -54,16 +57,19 @@ export function MachineWorkspace({
     can = (p: string) => access?.permissions.includes(p) ?? false;
   const fail = useCallback((e: unknown) => {
     setError(
-      e instanceof MachineApiError && e.code === 'MACHINE_COMMITTED'
-        ? 'machines.committed'
-        : e instanceof MachineApiError && e.code === 'MACHINE_ARCHIVED'
-          ? 'machines.archivedEdit'
-          : e instanceof MachineApiError &&
-              e.code === 'MACHINE_COMMITMENT_CONFLICT'
-            ? 'machines.commitmentConflict'
-            : e instanceof MachineApiError && e.status === 409
-              ? 'machines.conflict'
-              : 'machines.error',
+      safeErrorKey(
+        e,
+        e instanceof MachineApiError && e.code === 'MACHINE_COMMITTED'
+          ? 'machines.committed'
+          : e instanceof MachineApiError && e.code === 'MACHINE_ARCHIVED'
+            ? 'machines.archivedEdit'
+            : e instanceof MachineApiError &&
+                e.code === 'MACHINE_COMMITMENT_CONFLICT'
+              ? 'machines.commitmentConflict'
+              : e instanceof MachineApiError && e.status === 409
+                ? 'machines.conflict'
+                : 'machines.error',
+      ),
     );
   }, []);
   const load = useCallback(
@@ -97,7 +103,7 @@ export function MachineWorkspace({
     let alive = true;
     void (async () => {
       try {
-        const response = await fetch('/api/backend/me', { cache: 'no-store' });
+        const response = await accountResponse();
         if (!response.ok) throw new Error();
         const me = machineAccessSchema.parse(await response.json());
         if (!alive) return;
@@ -105,13 +111,29 @@ export function MachineWorkspace({
           o.access?.permissions.includes('machines.read'),
         );
         setOrgs(choices);
-        const selected =
-          choices.find((o) => o.access?.organizationId === initialOrg) ??
-          choices[0];
+        const selected = initialOrg
+          ? choices.find((o) => o.access?.organizationId === initialOrg)
+          : choices[0];
         if (selected?.access) {
           const id = selected.access.organizationId;
           setOrg(id);
-          await load(id, '');
+          const params = new URLSearchParams(window.location.search);
+          const filter = new URLSearchParams();
+          for (const key of [
+            'rentalState',
+            'serviceState',
+            'lifecycleState',
+            'branchId',
+          ])
+            if (params.get(key)) filter.set(key, params.get(key)!);
+          setQuery(filter.toString());
+          await load(id, filter.toString());
+          if (
+            alive &&
+            params.get('create') === '1' &&
+            selected.access.permissions.includes('machines.create')
+          )
+            setForm(true);
           if (initialId && id === initialOrg) {
             const row = await api.get(id, initialId);
             if (alive) setDetail(row);
@@ -178,21 +200,7 @@ export function MachineWorkspace({
   return (
     <main className="machine-workspace">
       <header>
-        <div>
-          <Link href="/">{t('app.title')}</Link>
-          <h1>{t('machines.title')}</h1>
-          <p>{t('machines.subtitle')}</p>
-        </div>
-        <label>
-          {t('customers.language')}
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value === 'tr' ? 'tr' : 'en')}
-          >
-            <option value="en">English</option>
-            <option value="tr">Türkçe</option>
-          </select>
-        </label>
+        <h1>{t('machines.title')}</h1>
       </header>
       {error && (
         <p role="alert" className="machine-error">
@@ -208,30 +216,6 @@ export function MachineWorkspace({
         org && (
           <>
             <div className="machine-actions">
-              <label>
-                {t('customers.organization')}
-                <select
-                  value={org}
-                  disabled={busy}
-                  onChange={(e) => {
-                    setOrg(e.target.value);
-                    setDetail(null);
-                    setForm(false);
-                    setQuery('');
-                    setCursors([]);
-                    void load(e.target.value, '');
-                  }}
-                >
-                  {orgs.map((o) => (
-                    <option
-                      key={o.access?.organizationId}
-                      value={o.access?.organizationId}
-                    >
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
               {can('machines.create') && (
                 <button
                   disabled={busy}
@@ -445,7 +429,12 @@ export function MachineWorkspace({
                       ))}
                       <label>
                         {t('machines.branchId')}
-                        <select name="branchId">
+                        <select
+                          name="branchId"
+                          defaultValue={
+                            new URLSearchParams(query).get('branchId') ?? ''
+                          }
+                        >
                           <option value="">{t('machines.all')}</option>
                           {branches.map((b) => (
                             <option key={b.id} value={b.id}>
@@ -456,7 +445,13 @@ export function MachineWorkspace({
                       </label>
                       <label>
                         {t('machines.lifecycleState')}
-                        <select name="lifecycleState">
+                        <select
+                          name="lifecycleState"
+                          defaultValue={
+                            new URLSearchParams(query).get('lifecycleState') ??
+                            'ACTIVE'
+                          }
+                        >
                           <option value="ACTIVE">{t('machines.ACTIVE')}</option>
                           <option value="ALL">{t('machines.all')}</option>
                           {machineLifecycleStateSchema.options
@@ -471,7 +466,12 @@ export function MachineWorkspace({
                       {(['rentalState', 'serviceState'] as const).map((k) => (
                         <label key={k}>
                           {t(`machines.${k}`)}
-                          <select name={k}>
+                          <select
+                            name={k}
+                            defaultValue={
+                              new URLSearchParams(query).get(k) ?? ''
+                            }
+                          >
                             <option value="">{t('machines.all')}</option>
                             {(k === 'rentalState'
                               ? machineRentalStateSchema.options

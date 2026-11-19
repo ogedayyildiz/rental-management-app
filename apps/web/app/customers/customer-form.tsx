@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Locale, TranslationKey } from '@rental/i18n';
 import { translate } from '@rental/i18n';
 import {
@@ -94,6 +94,11 @@ export function CustomerForm({
   onCancel: () => void;
 }) {
   const [invalid, setInvalid] = useState<string[]>([]);
+  const errorId = useId(),
+    errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (invalid.length) errorRef.current?.focus();
+  }, [invalid]);
   const t = (key: TranslationKey) => translate(locale, key);
   const values = Object.fromEntries(Object.entries(initial));
   return (
@@ -148,6 +153,7 @@ export function CustomerForm({
               <select
                 name={field.name}
                 defaultValue={String(values[field.name] ?? field.options[0])}
+                aria-describedby={invalid.length ? errorId : undefined}
                 aria-invalid={invalid.includes(field.name)}
               >
                 {field.options.map((option) => (
@@ -164,6 +170,7 @@ export function CustomerForm({
                 defaultValue={String(values[field.name] ?? '')}
                 maxLength={field.max}
                 rows={3}
+                aria-describedby={invalid.length ? errorId : undefined}
                 aria-invalid={invalid.includes(field.name)}
               />
             ) : (
@@ -175,6 +182,7 @@ export function CustomerForm({
                 type={
                   field.name.toLowerCase().includes('email') ? 'email' : 'text'
                 }
+                aria-describedby={invalid.length ? errorId : undefined}
                 aria-invalid={invalid.includes(field.name)}
               />
             )}
@@ -188,7 +196,11 @@ export function CustomerForm({
             : 'customers.primaryHint',
         )}
       </p>
-      {invalid.length > 0 && <p role="alert">{t('customers.invalid')}</p>}
+      {invalid.length > 0 && (
+        <p id={errorId} ref={errorRef} tabIndex={-1} role="alert">
+          {t('customers.invalid')}
+        </p>
+      )}
       <div className="customer-actions">
         <button disabled={busy} type="submit">
           {t('customers.save')}

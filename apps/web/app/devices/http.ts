@@ -13,6 +13,16 @@ export async function deviceHttp<T>(
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     },
   );
-  if (!response.ok) throw Error('Request failed');
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    const error = new Error('DEVICE_REQUEST_FAILED');
+    throw Object.assign(error, {
+      status: response.status,
+      code:
+        body && typeof body === 'object' && 'code' in body
+          ? body.code
+          : undefined,
+    });
+  }
   return response.json();
 }

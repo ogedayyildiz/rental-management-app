@@ -18,3 +18,5 @@ export function telemetryEndpointAllowed(method: string, path: string) {
 export * from './analytics.js';
 
 export * from './administration.js';
+
+export * from './operations.js';

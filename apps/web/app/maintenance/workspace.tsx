@@ -1,4 +1,7 @@
 'use client';
+import { safeErrorKey } from '../../lib/ui-error';
+import { useAppLocale } from '../app-shell';
+import { accountResponse } from '../../lib/account';
 import { useEffect, useState } from 'react';
 import { MaintenancePlans } from './plans';
 import type { FormEvent } from 'react';
@@ -19,9 +22,19 @@ import {
 } from '@rental/validation';
 import type { WorkOrderView, MachineView } from '@rental/validation';
 import { translate } from '@rental/i18n';
-import type { Locale, TranslationKey } from '@rental/i18n';
+import type { TranslationKey } from '@rental/i18n';
 const api = createMaintenanceClient('/api/backend'),
   machinesApi = createMachineClient('/api/backend');
+async function formChoices(org: string) {
+  const [branches, machines] = await Promise.all([
+    machinesApi.branches(org),
+    machinesApi.list(
+      org,
+      new URLSearchParams({ limit: '100', lifecycleState: 'ACTIVE' }),
+    ),
+  ]);
+  return { branches, machines: machines.items };
+}
 type Org = {
   name: string;
   access: {
@@ -41,7 +54,7 @@ export function MaintenanceWorkspace({
   initialOrg?: string;
   initialMachine?: string;
 }) {
-  const [locale, setLocale] = useState<Locale>('en'),
+  const [locale] = useAppLocale(),
     [orgs, setOrgs] = useState<Org[]>([]),
     [org, setOrg] = useState(''),
     [rows, setRows] = useState<WorkOrderView[]>([]),
@@ -49,7 +62,7 @@ export function MaintenanceWorkspace({
     [row, setRow] = useState<WorkOrderView | null>(null),
     [editing, setEditing] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(false),
+    [error, setError] = useState<TranslationKey | null>(null),
     [machines, setMachines] = useState<MachineView[]>([]),
     [branches, setBranches] = useState<{ id: string; name: string }[]>([]),
     [machineSearch, setMachineSearch] = useState(''),
@@ -69,11 +82,11 @@ export function MaintenanceWorkspace({
   }
   async function run(work: () => Promise<void>) {
     setBusy(true);
-    setError(false);
+    setError(null);
     try {
       await work();
-    } catch {
-      setError(true);
+    } catch (e) {
+      setError(safeErrorKey(e, 'maintenance.error'));
     } finally {
       setBusy(false);
     }
@@ -82,7 +95,7 @@ export function MaintenanceWorkspace({
     let alive = true;
     void (async () => {
       try {
-        const response = await fetch('/api/backend/me', { cache: 'no-store' });
+        const response = await accountResponse();
         if (!response.ok) throw Error();
         const me = machineAccessSchema.parse(await response.json());
         if (!alive) return;
@@ -90,17 +103,34 @@ export function MaintenanceWorkspace({
           x.access?.permissions.includes('maintenance.read'),
         );
         setOrgs(choices);
-        const selected =
-          choices.find((x) => x.access?.organizationId === initialOrg) ??
-          choices[0];
+        const selected = initialOrg
+          ? choices.find((o) => o.access?.organizationId === initialOrg)
+          : choices[0];
         if (selected?.access) {
           const id = selected.access.organizationId;
           setOrg(id);
-          const filter = initialMachine
-            ? 'machineId=' + encodeURIComponent(initialMachine)
-            : '';
+          const params = new URLSearchParams(window.location.search),
+            filters = new URLSearchParams();
+          if (initialMachine) filters.set('machineId', initialMachine);
+          for (const key of ['overdue', 'open', 'branchId'])
+            if (params.get(key)) filters.set(key, params.get(key)!);
+          const filter = filters.toString();
           setQuery(filter);
           await load(id, filter);
+          if (
+            alive &&
+            new URLSearchParams(window.location.search).get('create') === '1' &&
+            selected.access.permissions.includes('maintenance.create') &&
+            selected.access.permissions.includes('machines.read')
+          ) {
+            const choices = await formChoices(id);
+            if (alive) {
+              setBranches(choices.branches);
+              setMachines(choices.machines);
+              setRow(null);
+              setEditing(true);
+            }
+          }
           if (initialId && id === initialOrg) {
             const detail = await api.get(id, initialId);
             const restrictions = await api.blocks(id, detail.machineId);
@@ -111,7 +141,7 @@ export function MaintenanceWorkspace({
           }
         }
       } catch {
-        if (alive) setError(true);
+        if (alive) setError('ops.networkError');
       }
     })();
     return () => {
@@ -150,18 +180,12 @@ export function MaintenanceWorkspace({
         {t(('maintenance.' + v) as TranslationKey)}
       </option>
     ));
-  async function prepare(edit: boolean) {
+  async function prepare(edit: boolean, selectedOrg = org) {
     setEditing(true);
     if (!edit) setRow(null);
-    setBranches(await machinesApi.branches(org));
-    setMachines(
-      (
-        await machinesApi.list(
-          org,
-          new URLSearchParams({ limit: '100', lifecycleState: 'ACTIVE' }),
-        )
-      ).items,
-    );
+    const choices = await formChoices(selectedOrg);
+    setBranches(choices.branches);
+    setMachines(choices.machines);
   }
   function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -203,50 +227,19 @@ export function MaintenanceWorkspace({
     <main className="rental-workspace">
       <header>
         <h1>{t('maintenance.title')}</h1>
-        <nav>
-          <Link href="/">{t('app.title')}</Link> ·{' '}
-          <Link href="/machines">{t('machines.title')}</Link> ·{' '}
-          <Link href="/rentals">{t('rentals.title')}</Link>
-        </nav>
-        <select
-          value={locale}
-          onChange={(e) => setLocale(e.target.value === 'tr' ? 'tr' : 'en')}
-          aria-label={t('customers.language')}
-        >
-          <option value="en">English</option>
-          <option value="tr">Türkçe</option>
-        </select>
       </header>
       {error && (
         <p role="alert" className="rental-error">
-          {t('maintenance.error')}
+          {t(error)}
         </p>
       )}
+      {!org && !busy && <p role="status">{t('ops.denied')}</p>}
+      {busy && <p role="status">{t('ops.loading')}</p>}
       <fieldset disabled={busy}>
-        <select
-          value={org}
-          aria-label={t('customers.organization')}
-          onChange={(e) => {
-            const id = e.target.value;
-            setOrg(id);
-            setRow(null);
-            setEditing(false);
-            void run(() => load(id, ''));
-          }}
-        >
-          {orgs.map((o) => (
-            <option
-              key={o.access?.organizationId}
-              value={o.access?.organizationId}
-            >
-              {o.name}
-            </option>
-          ))}
-        </select>
         {org && (
           <>
             <div className="rental-actions">
-              {can('maintenance.create') && (
+              {can('maintenance.create') && can('machines.read') && (
                 <button onClick={() => void run(() => prepare(false))}>
                   {t('maintenance.new')}
                 </button>
@@ -289,7 +282,14 @@ export function MaintenanceWorkspace({
                 </select>
               </label>
               <label>
-                <input type="checkbox" name="overdue" value="true" />
+                <input
+                  type="checkbox"
+                  name="overdue"
+                  value="true"
+                  defaultChecked={
+                    new URLSearchParams(query).get('overdue') === 'true'
+                  }
+                />
                 {t('maintenance.overdue')}
               </label>
               <label>
@@ -781,13 +781,16 @@ export function MaintenanceWorkspace({
             <button onClick={() => void run(() => load(org, query))}>
               {t('rentals.previous')}
             </button>
-            {can('maintenance.plans.manage') && (
+            {can('maintenance.read') && (
               <MaintenancePlans
                 revision={row?.updatedAt}
                 key={org}
                 org={org}
                 locale={locale}
-                canCreate={can('maintenance.create')}
+                canCreate={can('maintenance.create') && can('machines.read')}
+                canManage={can('maintenance.plans.manage')}
+                canBrowseMachines={can('machines.read')}
+                initialMachine={initialMachine ?? ''}
                 onCreated={async (value) => {
                   await select(value);
                   await load(org, query);

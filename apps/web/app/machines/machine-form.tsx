@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { machineCreateSchema, machinePatchSchema } from '@rental/validation';
 import type { MachineView } from '@rental/validation';
@@ -48,6 +48,11 @@ export function MachineForm({
   onCancel: () => void;
 }) {
   const [invalid, setInvalid] = useState<string[]>([]);
+  const errorId = useId(),
+    errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (invalid.length) errorRef.current?.focus();
+  }, [invalid]);
   const t = (k: TranslationKey) => translate(locale, k);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -92,6 +97,7 @@ export function MachineForm({
         required={name !== 'serialNumber'}
         maxLength={name === 'fleetNumber' ? 100 : 200}
         defaultValue={row?.[name] ?? ''}
+        aria-describedby={invalid.length ? errorId : undefined}
         aria-invalid={invalid.includes(name)}
       />
     </label>
@@ -100,7 +106,11 @@ export function MachineForm({
     <form onSubmit={submit} className="machine-form">
       <fieldset disabled={busy}>
         <legend>{t(row ? 'machines.edit' : 'machines.create')}</legend>
-        {invalid.length > 0 && <p role="alert">{t('machines.invalid')}</p>}
+        {invalid.length > 0 && (
+          <p id={errorId} ref={errorRef} tabIndex={-1} role="alert">
+            {t('machines.invalid')}
+          </p>
+        )}
         <div className="machine-grid">
           {machineTextFields.map(field)}
           <label>
@@ -170,6 +180,7 @@ export function MachineForm({
                   name="acquisitionCost"
                   inputMode="decimal"
                   defaultValue={canViewCost ? (row?.acquisitionCost ?? '') : ''}
+                  aria-describedby={invalid.length ? errorId : undefined}
                   aria-invalid={invalid.includes('acquisitionCost')}
                 />
               </label>
@@ -179,6 +190,7 @@ export function MachineForm({
                   name="currency"
                   maxLength={3}
                   defaultValue={canViewCost ? (row?.currency ?? '') : ''}
+                  aria-describedby={invalid.length ? errorId : undefined}
                   aria-invalid={invalid.includes('currency')}
                 />
               </label>
@@ -198,6 +210,7 @@ export function MachineForm({
                 step="any"
                 min="0"
                 defaultValue={row?.specifications[k] ?? ''}
+                aria-describedby={invalid.length ? errorId : undefined}
                 aria-invalid={invalid.includes('specifications')}
               />
             </label>

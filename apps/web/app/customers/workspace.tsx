@@ -1,9 +1,11 @@
 'use client';
+import { safeErrorKey } from '../../lib/ui-error';
+import { useAppLocale } from '../app-shell';
+import { accountResponse } from '../../lib/account';
 import { FinancePanel } from '../finance/panel';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { translate } from '@rental/i18n';
-import type { Locale, TranslationKey } from '@rental/i18n';
+import type { TranslationKey } from '@rental/i18n';
 import { createCustomerClient, CustomerApiError } from '@rental/api-client';
 import {
   customerAccessSchema,
@@ -30,7 +32,7 @@ export function CustomerWorkspace({
 }: {
   initialOrg?: string;
 }) {
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale] = useAppLocale();
   const t = (key: TranslationKey) => translate(locale, key);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [org, setOrg] = useState('');
@@ -58,20 +60,23 @@ export function CustomerWorkspace({
   const can = (permission: string) => permissions.includes(permission);
   function failure(e: unknown) {
     setError(
-      e instanceof CustomerApiError
-        ? e.status === 403
-          ? 'customers.denied'
-          : e.status === 409
-            ? 'customers.conflict'
-            : 'customers.error'
-        : 'customers.error',
+      safeErrorKey(
+        e,
+        e instanceof CustomerApiError
+          ? e.status === 403
+            ? 'customers.denied'
+            : e.status === 409
+              ? 'customers.conflict'
+              : 'customers.error'
+          : 'customers.error',
+      ),
     );
   }
   useEffect(() => {
     let ignore = false;
     void (async () => {
       try {
-        const response = await fetch('/api/backend/me', { cache: 'no-store' });
+        const response = await accountResponse();
         if (!response.ok) throw new CustomerApiError(response.status);
         const data = customerAccessSchema.parse(await response.json());
         const available: Organization[] = data.organizations.flatMap((item) =>
@@ -81,16 +86,36 @@ export function CustomerWorkspace({
         );
         if (ignore) return;
         setOrganizations(available);
-        const first =
-          available.find((x) => x.access.organizationId === initialOrg) ??
-          available[0];
+        const first = initialOrg
+          ? available.find((x) => x.access.organizationId === initialOrg)
+          : available[0];
         if (first) {
           setOrg(first.access.organizationId);
           const result = await api.list(
             first.access.organizationId,
             new URLSearchParams(),
           );
-          if (!ignore) setPage(result);
+          if (!ignore) {
+            setPage(result);
+            const params = new URLSearchParams(window.location.search);
+            const customerId = params.get('customerId');
+            if (customerId) {
+              const [detail, contacts, addresses] = await Promise.all([
+                api.get(first.access.organizationId, customerId),
+                api.contacts(first.access.organizationId, customerId),
+                api.addresses(first.access.organizationId, customerId),
+              ]);
+              if (!ignore) {
+                setCustomer(detail);
+                setContacts(contacts);
+                setAddresses(addresses);
+              }
+            } else if (
+              params.get('create') === '1' &&
+              first.access.permissions.includes('customers.create')
+            )
+              setForm({ kind: 'customer', id: null, initial: {} });
+          }
         }
       } catch (e) {
         if (!ignore) failure(e);
@@ -197,43 +222,9 @@ export function CustomerWorkspace({
   return (
     <main className="customer-workspace">
       <header>
-        <div>
-          <Link href="/">{t('app.title')}</Link>
-          <h1>{t('customers.title')}</h1>
-          <p>{t('customers.subtitle')}</p>
-        </div>
-        <label>
-          {t('customers.language')}
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value === 'tr' ? 'tr' : 'en')}
-          >
-            <option value="en">{t('customers.en')}</option>
-            <option value="tr">{t('customers.tr')}</option>
-          </select>
-        </label>
+        <h1>{t('customers.title')}</h1>
       </header>
       <div className="customer-toolbar">
-        <label>
-          {t('customers.organization')}
-          <select
-            disabled={busy}
-            value={org}
-            onChange={(e) => {
-              setOrg(e.target.value);
-              void load(e.target.value);
-            }}
-          >
-            {organizations.map((o) => (
-              <option
-                value={o.access.organizationId}
-                key={o.access.organizationId}
-              >
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </label>
         <a href="/auth/logout">{t('auth.logout')}</a>
       </div>
       {error && (

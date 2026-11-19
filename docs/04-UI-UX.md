@@ -3417,3 +3417,6 @@ Security:
 Coding standards:
 
 `11-CODING-STANDARDS.md`
+## Implemented web operations shell
+
+The Phase 1 dashboard, navigation, derived notification center, global search and accessibility behavior are specified in [Operations implementation](23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md). This implementation reuses existing domain permissions, organization context and workflow screens. The broader product/UI direction above remains future scope where not implemented.

@@ -266,7 +266,10 @@ for (const persona of ['SECOND_TENANT_ADMIN', 'PLATFORM_OPERATOR'])
       ).toHaveCount(0);
       if (persona === 'PLATFORM_OPERATOR')
         await expect(
-          page.getByText('No authorized finance workspace.', { exact: true }),
+          page.getByRole('status').filter({
+            hasText:
+              'You have no active organization membership. Platform access does not grant tenant access.',
+          }),
         ).toBeVisible();
       else
         await expect(

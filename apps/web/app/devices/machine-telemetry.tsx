@@ -90,6 +90,7 @@ export function MachineTelemetry({
     [error, E] = useState(false);
   const t = (k: TranslationKey) => translate(locale, k);
   const [openedAt] = useState(() => Date.now());
+  const [observedAt, O] = useState(() => Date.now());
   const path = 'machines/' + id + '/telemetry';
   useEffect(() => {
     let alive = true;
@@ -98,6 +99,7 @@ export function MachineTelemetry({
         const v = await deviceHttp<State>(org, path);
         if (alive) {
           S(v);
+          O(Date.now());
           E(false);
         }
       } catch {
@@ -121,18 +123,30 @@ export function MachineTelemetry({
   return (
     <section aria-label={t('iot.telemetry')}>
       <h3>{t('iot.telemetry')}</h3>
-      {error && <p role="alert">{t('auth.failed')}</p>}
+      {error && <p role="alert">{t('ops.networkError')}</p>}
       <button onClick={() => R((x) => x + 1)}>{t('iot.refresh')}</button>
       {state && (
         <>
           <strong>{t(('iot.' + state.connectivity) as TranslationKey)}</strong>{' '}
-          {state.lastUpdate}
+          {state.lastUpdate && (
+            <time dateTime={state.lastUpdate}>{state.lastUpdate}</time>
+          )}
+          {state.lastUpdate && (
+            <p>
+              {t('ops.age')}:{' '}
+              {Math.max(
+                0,
+                Math.floor((observedAt - Date.parse(state.lastUpdate)) / 60000),
+              )}
+            </p>
+          )}
           <dl>
             {state.signals.map((r) => (
               <div key={r.signal}>
                 <dt>{t(('iot.' + r.signal) as TranslationKey)}</dt>
                 <dd>
-                  {value(r)} · {r.stale && t('iot.stale')} {r.recorded}
+                  {value(r)} · {t(r.stale ? 'iot.stale' : 'ops.recent')}{' '}
+                  {r.recorded}
                 </dd>
                 {r.signal === 'location' && typeof r.value === 'object' && (
                   <MapPoint point={r.value} label={t('iot.map')} />

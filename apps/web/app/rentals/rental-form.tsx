@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   createCustomerClient,
   createRentalClient,
@@ -102,6 +102,15 @@ export function RentalForm({
     [machineSearch, setMachineSearch] = useState(''),
     [error, setError] = useState(false),
     [loading, setLoading] = useState(false);
+  const customerPanel = useRef<HTMLElement>(null),
+    customerTrigger = useRef<HTMLButtonElement>(null),
+    wasCreating = useRef(false);
+  useEffect(() => {
+    if (creatingCustomer)
+      customerPanel.current?.querySelector('input')?.focus();
+    else if (wasCreating.current) customerTrigger.current?.focus();
+    wasCreating.current = creatingCustomer;
+  }, [creatingCustomer]);
   const editItems = !row || (canPrice && canViewPrice);
   const change = (index: number, patch: Partial<RentalItemInput>) => {
     setItems((v) =>
@@ -187,6 +196,7 @@ export function RentalForm({
       {creatingCustomer && canCreateCustomer && (
         <section
           className="rental-panel"
+          ref={customerPanel}
           aria-label={t('rentals.createCustomer')}
         >
           <h2>{t('rentals.createCustomer')}</h2>
@@ -254,6 +264,7 @@ export function RentalForm({
             </button>
             {canCreateCustomer && (
               <button
+                ref={customerTrigger}
                 type="button"
                 onClick={() => {
                   setCreatingCustomer(true);
