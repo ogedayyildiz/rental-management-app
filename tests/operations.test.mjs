@@ -258,7 +258,7 @@ test('operations upcoming dispatch and preventive plan deadlines are read-only a
       machine: { fleetNumber: 'F-1' },
     },
   ];
-  const before = structuredClone(s);
+  const before = globalThis.structuredClone(s);
   const upcoming = derive(s);
   assert.equal(
     upcoming.metrics.find((m) => m.key === 'reservationsSoon').value,
