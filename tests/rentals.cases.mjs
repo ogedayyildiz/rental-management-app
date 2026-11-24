@@ -9,6 +9,8 @@ import { PrismaMachineUnitOfWork } from '../apps/api/dist/infrastructure/prisma.
 import { CustomerService } from '../apps/api/dist/customers/customer.service.js';
 import { PrismaCustomerUnitOfWork } from '../apps/api/dist/infrastructure/prisma.customers.js';
 const keys = [
+  'rentals.transport_costs.view',
+  'rentals.transport_costs.edit',
   'maintenance.block_machine',
   'maintenance.release_machine',
   'rentals.read',
@@ -107,6 +109,7 @@ export async function rentalCases(suite, db, fixture, h) {
     agreedRate: '99.123456',
     rateUnit: 'DAILY',
     currency: 'TRY',
+    tax: { mode: 'EXCLUSIVE', rate: '0' },
     ...extra,
   });
   const create = (t, items = [item(t)], extra = {}) =>
@@ -123,6 +126,175 @@ export async function rentalCases(suite, db, fixture, h) {
   const state = async (t) =>
     (await db.machine.findUniqueOrThrow({ where: { id: t.machine.id } }))
       .rentalState;
+  const transport = {
+    currency: 'TRY',
+    customerPrice: '1200',
+    customerTax: { mode: 'INCLUSIVE', rate: '20' },
+    supplierQuote: {
+      name: 'Transport test company',
+      amount: '800',
+      tax: { mode: 'EXCLUSIVE', rate: '10' },
+    },
+  };
+  await suite.test(
+    'transport: quote creation, revisions, removal, reservation freeze and audit history',
+    async () => {
+      const t = await tenant();
+      let r = await create(t, [item(t)], { transportation: transport });
+      assert.equal(r.transportation.estimatedMargin, '200.00');
+      const id = r.transportation.id;
+      r = await call(t, 'update', r.id, { notes: 'Operational edit' });
+      assert.equal(r.transportation.id, id);
+      r = await call(t, 'update', r.id, {
+        transportation: { ...transport, customerPrice: '1440' },
+      });
+      assert.equal(r.transportation.estimatedMargin, '400.00');
+      assert.equal(r.transportationHistory[0].customerPrice, '1200.00');
+      r = await call(t, 'update', r.id, { transportation: null });
+      assert.equal(r.transportation, null);
+      assert.equal(r.transportationHistory.length, 2);
+      r = await call(t, 'update', r.id, { transportation: transport });
+      await reserve(t, r.id);
+      await assert.rejects(call(t, 'update', r.id, { transportation: null }), {
+        code: 'INVALID_TRANSITION',
+      });
+      const audit = await db.auditEvent.findMany({
+        where: {
+          organizationId: t.organization.id,
+          targetId: r.id,
+          action: 'RENTAL_TRANSPORT_CHANGED',
+        },
+      });
+      assert.equal(audit.length, 4);
+      assert.ok(
+        audit.every((a) => !JSON.stringify(a.metadata).includes('800')),
+      );
+    },
+  );
+  await suite.test(
+    'transport: independent price/cost permissions redact history and preserve hidden quotes on edits',
+    async () => {
+      const t = await tenant();
+      let r = await create(t, [item(t)], { transportation: transport });
+      await db.rolePermission.deleteMany({
+        where: {
+          roleId: t.role.id,
+          permissionKey: {
+            in: [
+              'rentals.transport_costs.view',
+              'rentals.transport_costs.edit',
+            ],
+          },
+        },
+      });
+      const priceOnly = {
+        currency: 'TRY',
+        customerPrice: '1440',
+        customerTax: transport.customerTax,
+      };
+      r = await call(t, 'update', r.id, { transportation: priceOnly });
+      for (const q of [r.transportation, ...r.transportationHistory]) {
+        assert.ok(q.customerPrice);
+        assert.equal(Object.hasOwn(q, 'supplierQuote'), false);
+        assert.equal(Object.hasOwn(q, 'estimatedMargin'), false);
+      }
+      const stored = await db.rentalCharge.findFirstOrThrow({
+        where: { rentalId: r.id, removedAt: null },
+      });
+      assert.equal(stored.supplierCost.toFixed(2), '800.00');
+      await assert.rejects(
+        call(t, 'update', r.id, { transportation: transport }),
+        { code: 'ACCESS_DENIED' },
+      );
+      await assert.rejects(call(t, 'update', r.id, { transportation: null }), {
+        code: 'ACCESS_DENIED',
+      });
+      await assert.rejects(
+        call(t, 'update', r.id, {
+          transportation: { ...priceOnly, currency: 'EUR' },
+        }),
+        { code: 'INVALID_INPUT' },
+      );
+      await db.rolePermission.deleteMany({
+        where: {
+          roleId: t.role.id,
+          permissionKey: {
+            in: ['rentals.pricing.view', 'rentals.pricing.edit'],
+          },
+        },
+      });
+      r = await service.get(t.principal, t.organization.id, r.id);
+      for (const q of [r.transportation, ...r.transportationHistory])
+        for (const key of [
+          'customerPrice',
+          'customerTax',
+          'currency',
+          'supplierQuote',
+          'estimatedMargin',
+        ])
+          assert.equal(Object.hasOwn(q, key), false);
+      await assert.rejects(
+        call(t, 'update', r.id, { transportation: priceOnly }),
+        { code: 'ACCESS_DENIED' },
+      );
+    },
+  );
+  await suite.test(
+    'transport: tenant composite ownership, current quote uniqueness and audit failure rollback',
+    async () => {
+      const t = await tenant(),
+        other = await tenant();
+      const r = await create(t, [item(t)], { transportation: transport });
+      await assert.rejects(
+        service.get(other.principal, other.organization.id, r.id),
+        { code: 'NOT_FOUND' },
+      );
+      const stored = await db.rentalCharge.findFirstOrThrow({
+        where: { rentalId: r.id },
+      });
+      await assert.rejects(
+        db.rentalCharge.create({
+          data: {
+            ...stored,
+            id: randomUUID(),
+            organizationId: other.organization.id,
+          },
+        }),
+      );
+      await assert.rejects(
+        db.rentalCharge.create({ data: { ...stored, id: randomUUID() } }),
+      );
+      const broken = new RentalService({
+        run: (work) =>
+          unit.run((repos) =>
+            work({
+              ...repos,
+              audit: {
+                append: async () => {
+                  throw new Error('audit unavailable');
+                },
+              },
+            }),
+          ),
+      });
+      await assert.rejects(
+        broken.update(
+          t.principal,
+          t.organization.id,
+          r.id,
+          { transportation: { ...transport, customerPrice: '1800' } },
+          randomUUID(),
+        ),
+        /audit unavailable/,
+      );
+      const rows = await db.rentalCharge.findMany({
+        where: { rentalId: r.id },
+      });
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].removedAt, null);
+      assert.equal(rows[0].customerPrice.toFixed(2), '1200.00');
+    },
+  );
   await suite.test(
     'platform height filters availability and preserves deferred assignment requirements',
     async () => {

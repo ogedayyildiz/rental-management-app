@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { RentalService } from '../apps/api/dist/rentals/rental.service.js';
+import { PrismaRentalUnitOfWork } from '../apps/api/dist/infrastructure/prisma.rentals.js';
 import { URLSearchParams } from 'node:url';
 import { createRequire } from 'node:module';
 import { AnalyticsService } from '../apps/api/dist/analytics/analytics.service.js';
@@ -34,6 +37,154 @@ export async function analyticsCases(suite, db, fixture, h) {
   );
   const report = (q = {}) =>
     service.report(t.principal, org, { ...query, ...q });
+  await suite.test(
+    'transport analytics: scoped rental-level net margin, hidden cost exports and independent source permissions',
+    async () => {
+      const rentals = new RentalService(new PrismaRentalUnitOfWork(db));
+      const transport = {
+        currency: 'TRY',
+        customerPrice: '1200',
+        customerTax: { mode: 'INCLUSIVE', rate: '20' },
+        supplierQuote: {
+          name: 'Test carrier',
+          amount: '800',
+          tax: { mode: 'EXCLUSIVE', rate: '10' },
+        },
+      };
+      const hidden = await db.branch.create({
+        data: { organizationId: org, name: 'Hidden transport branch' },
+      });
+      const base = { customerId: data.customer.id, transportation: transport };
+      const visible = await rentals.create(
+        t.principal,
+        org,
+        { ...base, branchId: t.branch.id },
+        randomUUID(),
+      );
+      const hiddenRental = await rentals.create(
+        t.principal,
+        org,
+        { ...base, branchId: hidden.id },
+        randomUUID(),
+      );
+      const from = new Date(Date.now() - 3600000).toISOString(),
+        to = new Date(Date.now() + 3600000).toISOString();
+      const reader = new AnalyticsService(new PrismaFinanceUnitOfWork(db));
+      const read = (extra = {}) =>
+        reader.report(t.principal, org, {
+          preset: 'CUSTOM',
+          from,
+          to,
+          ...extra,
+        });
+      let r = await read();
+      assert.deepEqual(r.transportation, [
+        {
+          status: 'DRAFT',
+          currency: 'TRY',
+          count: 2,
+          customerNet: '2000.00',
+          supplierNet: '1600.00',
+          estimatedMargin: '400.00',
+          missingSupplierQuotes: 0,
+        },
+      ]);
+      assert.equal(
+        (await read({ machineId: data.machines[0].id })).transportation,
+        undefined,
+      );
+      await db.membership.update({
+        where: { id: t.membership.id },
+        data: { branchScope: 'SELECTED_BRANCHES' },
+      });
+      await db.membershipBranch.createMany({
+        data: [
+          {
+            organizationId: org,
+            membershipId: t.membership.id,
+            branchId: t.branch.id,
+          },
+        ],
+        skipDuplicates: true,
+      });
+      r = await read();
+      assert.equal(r.transportation[0].count, 1);
+      assert.equal(r.transportation[0].estimatedMargin, '200.00');
+      await assert.rejects(read({ branchId: hidden.id }), {
+        code: 'ACCESS_DENIED',
+      });
+      await assert.rejects(rentals.get(t.principal, org, hiddenRental.id), {
+        code: 'NOT_FOUND',
+      });
+      await assert.rejects(reader.report(other.principal, org, {}), {
+        code: 'ACCESS_DENIED',
+      });
+      await db.rolePermission.deleteMany({
+        where: {
+          roleId: t.role.id,
+          permissionKey: 'rentals.transport_costs.view',
+        },
+      });
+      r = await read();
+      assert.deepEqual(r.transportation, [
+        { status: 'DRAFT', currency: 'TRY', count: 1, customerNet: '1000.00' },
+      ]);
+      const Excel = requireApi('exceljs'),
+        book = new Excel.Workbook();
+      await book.xlsx.load(await analyticsExport(r));
+      const cells = book.getWorksheet('Transportation').getSheetValues().flat();
+      assert.ok(cells.includes('1000.00'));
+      assert.ok(!cells.includes('800.00'));
+      assert.ok(!cells.includes('200.00'));
+      assert.ok(!cells.includes('Supplier transport cost (excluding VAT)'));
+      await db.rolePermission.create({
+        data: {
+          organizationId: org,
+          roleId: t.role.id,
+          permissionKey: 'rentals.transport_costs.view',
+        },
+      });
+      await db.rolePermission.deleteMany({
+        where: { roleId: t.role.id, permissionKey: 'rentals.pricing.view' },
+      });
+      r = await read();
+      assert.equal(r.transportation[0].supplierNet, '800.00');
+      assert.equal(Object.hasOwn(r.transportation[0], 'customerNet'), false);
+      assert.equal(
+        Object.hasOwn(r.transportation[0], 'estimatedMargin'),
+        false,
+      );
+      await db.rolePermission.create({
+        data: {
+          organizationId: org,
+          roleId: t.role.id,
+          permissionKey: 'rentals.pricing.view',
+        },
+      });
+      await rentals.cancel(
+        t.principal,
+        org,
+        visible.id,
+        { reason: 'End transport fixture' },
+        randomUUID(),
+      );
+      assert.deepEqual((await read()).transportation, []);
+      await db.membership.update({
+        where: { id: t.membership.id },
+        data: { branchScope: 'ALL_BRANCHES' },
+      });
+      await rentals.cancel(
+        t.principal,
+        org,
+        hiddenRental.id,
+        { reason: 'End transport fixture' },
+        randomUUID(),
+      );
+      await db.membershipBranch.deleteMany({
+        where: { membershipId: t.membership.id, branchId: t.branch.id },
+      });
+    },
+  );
   await suite.test(
     'finance scoped reads, exact estimates, costs, recovery and mixed currencies',
     async () => {

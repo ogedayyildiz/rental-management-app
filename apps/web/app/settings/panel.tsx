@@ -1,4 +1,5 @@
 'use client';
+import { CurrencySelect } from '../currency-select';
 import { useEffect, useState, type ReactNode } from 'react';
 import { translate, type Locale, type TranslationKey } from '@rental/i18n';
 import {
@@ -187,6 +188,7 @@ export function SettingsPanel({
         <OrganizationForm
           key={settings.updatedAt}
           value={settings}
+          locale={locale}
           t={t}
           busy={busy}
           save={(b) => mutation(() => api.updateOrganization(org, b), true)}
@@ -478,12 +480,14 @@ function Confirmation({ t }: { t: T }) {
   );
 }
 function OrganizationForm({
+  locale,
   value,
   t,
   busy,
   save,
 }: {
   value: OrganizationSettings;
+  locale: Locale;
   t: T;
   busy: boolean;
   save: (b: unknown) => Promise<void>;
@@ -518,10 +522,10 @@ function OrganizationForm({
         ))}
         <label>
           {t('currency')}
-          <input
+          <CurrencySelect
+            locale={locale}
             name="defaultCurrency"
             defaultValue={value.defaultCurrency}
-            pattern="[A-Z]{3}"
             required
           />
         </label>

@@ -1,4 +1,6 @@
 'use client';
+import { TaxFields } from '../tax-fields';
+import { TransportEditor, transportDraft } from './transportation';
 import { useEffect, useRef, useState } from 'react';
 import {
   createCustomerClient,
@@ -19,6 +21,7 @@ import type {
 } from '@rental/validation';
 import { translate } from '@rental/i18n';
 import type { Locale, TranslationKey } from '@rental/i18n';
+import { CurrencySelect } from '../currency-select';
 import { CustomerForm } from '../customers/customer-form';
 import '../customers/customers.css';
 const api = createRentalClient('/api/backend'),
@@ -42,6 +45,7 @@ export function RentalForm({
   row,
   canPrice,
   canViewPrice,
+  canTransportCosts,
   canCreateCustomer,
   busy,
   onSave,
@@ -53,14 +57,20 @@ export function RentalForm({
   row: RentalView | null;
   canPrice: boolean;
   canViewPrice: boolean;
+  canTransportCosts: boolean;
   canCreateCustomer: boolean;
   busy: boolean;
   onSave: (v: unknown) => Promise<void>;
   onClose: () => void;
 }) {
   const t = (k: TranslationKey) => translate(locale, k);
-  const currencyNames = new Intl.DisplayNames([locale], { type: 'currency' });
-  const currencies = Intl.supportedValuesOf('currency');
+  const [transportEnabled, setTransportEnabled] = useState(
+      !!row?.transportation,
+    ),
+    [transport, setTransport] = useState(() =>
+      transportDraft(row?.transportation ?? null),
+    ),
+    [transportChanged, setTransportChanged] = useState(false);
   const [customerId, setCustomer] = useState(row?.customerId ?? ''),
     [branchId, setBranch] = useState(row?.branchId ?? ''),
     [notes, setNotes] = useState(row?.notes ?? ''),
@@ -83,6 +93,7 @@ export function RentalForm({
                     agreedRate: i.agreedRate ?? null,
                     rateUnit: i.rateUnit ?? null,
                     currency: i.currency ?? null,
+                    tax: i.tax ?? { mode: 'UNSPECIFIED' },
                     commercialNotes: i.commercialNotes ?? null,
                   }
                 : {}),
@@ -230,6 +241,28 @@ export function RentalForm({
             branchId: branchId || null,
             notes: notes || null,
             ...(editItems ? { items } : {}),
+            ...(transportChanged && canPrice && canViewPrice
+              ? {
+                  transportation: transportEnabled
+                    ? {
+                        currency: transport.currency,
+                        customerPrice: transport.customerPrice,
+                        customerTax: transport.customerTax,
+                        ...(canTransportCosts
+                          ? {
+                              supplierQuote: transport.supplierAmount
+                                ? {
+                                    name: transport.supplierName || null,
+                                    amount: transport.supplierAmount,
+                                    tax: transport.supplierTax,
+                                  }
+                                : null,
+                            }
+                          : {}),
+                      }
+                    : null,
+                }
+              : {}),
           };
           const result = (
             row ? rentalPatchSchema : rentalCreateSchema
@@ -318,6 +351,22 @@ export function RentalForm({
           </label>
           {editItems && (
             <>
+              {canPrice && canViewPrice && (
+                <TransportEditor
+                  enabled={transportEnabled}
+                  value={transport}
+                  costs={canTransportCosts}
+                  locale={locale}
+                  toggle={(enabled) => {
+                    setTransportEnabled(enabled);
+                    setTransportChanged(true);
+                  }}
+                  change={(next) => {
+                    setTransport(next);
+                    setTransportChanged(true);
+                  }}
+                />
+              )}
               <h3>{t('rentals.items')}</h3>
               <p>{t('rentals.allocateLater')}</p>
               {items.map((item, index) => (
@@ -465,28 +514,21 @@ export function RentalForm({
                         </label>
                         <label>
                           {t('rentals.currency')}
-                          <select
+                          <CurrencySelect
+                            locale={locale}
                             value={item.currency ?? ''}
                             onChange={(e) =>
                               change(index, {
                                 currency: e.target.value || null,
                               })
                             }
-                          >
-                            <option value="">{t('rentals.choose')}</option>
-                            {item.currency &&
-                              !currencies.includes(item.currency) && (
-                                <option value={item.currency}>
-                                  {item.currency}
-                                </option>
-                              )}
-                            {currencies.map((currency) => (
-                              <option key={currency} value={currency}>
-                                {currency} — {currencyNames.of(currency)}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </label>
+                        <TaxFields
+                          locale={locale}
+                          value={item.tax ?? { mode: 'UNSPECIFIED' }}
+                          onChange={(tax) => change(index, { tax })}
+                        />
                         <label>
                           {t('rentals.commercialNotes')}
                           <input

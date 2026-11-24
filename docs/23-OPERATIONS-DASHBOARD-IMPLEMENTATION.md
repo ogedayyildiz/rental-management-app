@@ -180,6 +180,9 @@ domain workspaces to narrow large operational sets. No distributed cache is adde
 
 ## Verification and external gates
 
+The following is the Operations milestone. See the [current workspace verification](19-E2E-TESTING.md#current-verification-baseline)
+for the expanded suite and latest hosted run; Operations scenarios remain mandatory.
+
 Local verification on 2026-11-19 passed all 167 unit/integration/security tests and
 45 Playwright scenarios with no retries or skipped scenarios. Lint, strict TypeScript,
 formatting and the full workspace build passed. The additive notification migration

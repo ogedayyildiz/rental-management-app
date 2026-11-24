@@ -1,3 +1,4 @@
+import { taxSchema } from './tax.js';
 import { z } from 'zod';
 import { machineCostSchema, machineServiceStateSchema } from './machines.js';
 import { customerCursorSchema } from './customers.js';
@@ -88,6 +89,7 @@ export const maintenanceMaterialSchema = z.strictObject({
   unit: z.string().trim().min(1).max(40),
 });
 export const maintenanceCostSchema = z.strictObject({
+  tax: taxSchema.default({ mode: 'UNSPECIFIED' }),
   kind: z.enum(['LABOR', 'PARTS', 'EXTERNAL_SERVICE', 'TRANSPORT', 'OTHER']),
   amount: machineCostSchema,
   currency: z.string().regex(/^[A-Z]{3}$/),

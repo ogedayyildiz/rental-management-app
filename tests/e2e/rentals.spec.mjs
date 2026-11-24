@@ -1,3 +1,4 @@
+import { expectCurrencyChoices } from './currency-helpers.mjs';
 import { test, expect, json } from './fixtures.mjs';
 const stamp = (days = 0) =>
   new Date(Date.now() + days * 86400000).toISOString().slice(0, 16);
@@ -23,8 +24,15 @@ async function draft(page, data, notes) {
   await form.getByLabel('Planned end (UTC)').fill(stamp(2));
   await form.getByLabel('Agreed rate', { exact: true }).fill('4567.89');
   await form
+    .getByRole('combobox', { name: 'VAT treatment', exact: true })
+    .selectOption('EXCLUSIVE');
+  await form.getByLabel('VAT rate (%)', { exact: true }).fill('0');
+  await form
     .getByRole('combobox', { name: 'Rate unit', exact: true })
     .selectOption('DAILY');
+  await expectCurrencyChoices(
+    form.getByRole('combobox', { name: 'Currency', exact: true }),
+  );
   await form
     .getByRole('combobox', { name: 'Currency', exact: true })
     .selectOption('TRY');
@@ -38,9 +46,12 @@ async function draft(page, data, notes) {
   await expect(
     page.getByRole('button', { name: 'Confirm reservation', exact: true }),
   ).toBeVisible();
-  return (
+  const rental = (
     await json(page, `organizations/${data.org.id}/rentals`)
   ).body.items.find((x) => x.notes === notes);
+  expect(rental.items[0].currency).toBe('TRY');
+  expect(rental.items[0].agreedRate).toBe('4567.89');
+  return rental;
 }
 test('rental UI reserve, conflict, dispatch, extend, return and complete', async ({
   page,

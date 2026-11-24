@@ -1,5 +1,10 @@
 # Telemetry foundation: device registry and installation history
 
+Phase 1 is implemented and simulator-verified; real providers remain blocked by
+the access gates below. Dated verification counts record historical milestones;
+the [current workspace baseline](19-E2E-TESTING.md#current-verification-baseline)
+includes these telemetry scenarios in the expanded cross-domain suite.
+
 The original persistence slice is the basis for the Phase 1 administration API below.
 A TrackingDevice belongs to one organization even when it has no installation. Its UUID
 identifies the registered unit. Provider and external identifier are opaque inventory

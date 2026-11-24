@@ -13,6 +13,8 @@ import {
   type FinanceSnapshot,
 } from '../analytics/contracts.js';
 import { PrismaAccessRepository } from './prisma.repositories.js';
+import { readTax } from '../finance/tax.js';
+import { rentalTransportViewSchema } from '@rental/validation';
 
 const iso = (d: Date | null) => d?.toISOString() ?? null;
 const maxRows = 10000;
@@ -145,6 +147,40 @@ export class PrismaFinanceReader implements FinanceReadRepository {
             customerId: true,
             customer: { select: { displayName: true } },
             branchId: true,
+            createdAt: true,
+            plannedStartAt: true,
+            ...((v.pricing || v.transportCosts) &&
+            !q.machineId &&
+            !q.modelId &&
+            !q.categoryId
+              ? {
+                  charges: {
+                    where: { kind: 'TRANSPORT', removedAt: null },
+                    select: {
+                      id: true,
+                      currency: true,
+                      createdAt: true,
+                      removedAt: true,
+                      ...(v.pricing
+                        ? {
+                            customerPrice: true,
+                            taxMode: true,
+                            taxRate: true,
+                            taxReason: true,
+                          }
+                        : {}),
+                      ...(v.transportCosts
+                        ? {
+                            supplierCost: true,
+                            supplierTaxMode: true,
+                            supplierTaxRate: true,
+                            supplierTaxReason: true,
+                          }
+                        : {}),
+                    },
+                  },
+                }
+              : {}),
             items: {
               where: { removedAt: null },
               select: {
@@ -234,6 +270,38 @@ export class PrismaFinanceReader implements FinanceReadRepository {
           : {}),
       })),
       rentals: rentals.map((r) => ({
+        createdAt: r.createdAt.toISOString(),
+        plannedStartAt: iso(r.plannedStartAt),
+        transportation: r.charges?.[0]
+          ? rentalTransportViewSchema.parse({
+              id: r.charges[0].id,
+              currency: r.charges[0].currency,
+              createdAt: r.charges[0].createdAt.toISOString(),
+              removedAt: null,
+              ...(v.pricing
+                ? {
+                    customerPrice: r.charges[0].customerPrice.toFixed(2),
+                    customerTax: readTax(r.charges[0]),
+                  }
+                : {}),
+              ...(v.transportCosts
+                ? {
+                    supplierQuote:
+                      r.charges[0].supplierCost === null
+                        ? null
+                        : {
+                            name: null,
+                            amount: r.charges[0].supplierCost.toFixed(2),
+                            tax: readTax({
+                              taxMode: r.charges[0].supplierTaxMode!,
+                              taxRate: r.charges[0].supplierTaxRate,
+                              taxReason: r.charges[0].supplierTaxReason,
+                            }),
+                          },
+                  }
+                : {}),
+            })
+          : null,
         id: r.id,
         number: r.number,
         customerId: r.customerId,

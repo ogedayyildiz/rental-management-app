@@ -241,13 +241,31 @@ content and rendered PDF review. Real Auth0/provider verification remains separa
 
 ## Deferred boundaries
 
-No telemetry ingestion, CAN/fault integration, operating hours, GPS, predictive logic,
-remote commands, inventory balances/purchasing/suppliers, invoices, payments, ROI,
-profitability or accounting. Parts are consumption descriptions only. No customer-bound
-field service, return inspection subsystem, recurrence background jobs, notifications,
-mobile management UI or arbitrary workflow builder. Existing architecture and service
-state dimensions are retained; no new ADR is required for this phase.
+Maintenance does not own telemetry ingestion, accounting or Finance calculations.
+Simulator-backed Telemetry and Finance exist in their separate modules; neither
+fault disappearance nor a financial settlement completes a work order. Derived
+Operations notifications consume maintenance deadlines as described below.
+
+Telemetry-triggered work orders/usage schedules, predictive logic, remote commands,
+inventory balances/purchasing/suppliers, maintenance supplier payables, invoice
+issuance and statutory accounting remain deferred. Parts are consumption descriptions
+only. No customer-bound field service, return inspection subsystem, recurrence
+background jobs, mobile management UI or arbitrary workflow builder is implemented.
+Existing architecture and independent service states remain unchanged. Consult the
+[current verification baseline](19-E2E-TESTING.md#current-verification-baseline) for
+the expanded suite; the 107-test milestone above is historical.
 
 ## Operations integration
 
 The [Operations dashboard](23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md) consumes the existing work-order/plan deadlines and service restrictions without changing them. Calendar plans are readable under `maintenance.read`; management controls continue to require `maintenance.plans.manage`. Dashboard plan links select the machine's plan assignments. Notifications do not generate or complete work orders.
+
+## VAT metadata
+
+New labor/parts/external-service cost entries require explicit VAT included/excluded
+with a rate, or not applicable with a reason. Historical costs retain UNSPECIFIED
+VAT and unchanged amounts. VAT metadata follows maintenance.costs.view/edit;
+technical PDF/XLSX histories still omit financial costs entirely. Existing analytics
+use the entered cost basis and do not claim VAT-normalized accounting results.
+The separate [operational Finance phase](24-FINANCE-OPERATIONS-IMPLEMENTATION.md)
+adds customer collections and Machine acquisition commitments only; it does not
+create maintenance supplier payables or change service-state/work-order semantics.

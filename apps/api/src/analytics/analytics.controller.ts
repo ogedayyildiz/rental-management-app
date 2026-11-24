@@ -41,8 +41,9 @@ export class AnalyticsController {
       q,
       true,
     );
+    const options = analyticsQuerySchema.parse(q);
     return new StreamableFile(
-      await analyticsExport(report, analyticsQuerySchema.parse(q).locale),
+      await analyticsExport(report, options.locale, options.durationUnit),
       {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         disposition: 'attachment; filename="finance-estimates.xlsx"',

@@ -96,11 +96,28 @@ export function builders(db, principal, org) {
           manufacturer: 'E2E',
           model: 'Lift 8',
           category: 'Scissor lift',
+          ...(extra.acquisitionCost != null
+            ? { tax: { mode: 'EXCLUSIVE', rate: '0' } }
+            : {}),
           ...extra,
         },
         randomUUID(),
       ),
-    rental: (input) => rentals.create(principal, org.id, input, randomUUID()),
+    rental: (input) =>
+      rentals.create(
+        principal,
+        org.id,
+        {
+          ...input,
+          items: input.items?.map((i) => ({
+            ...i,
+            ...(i.agreedRate != null
+              ? { tax: { mode: 'EXCLUSIVE', rate: '0' } }
+              : {}),
+          })),
+        },
+        randomUUID(),
+      ),
     workOrder: (input) =>
       maintenance.create(principal, org.id, input, randomUUID()),
     plan: (input) =>
@@ -151,6 +168,7 @@ export async function seed(db, env) {
       'device.read',
       'telemetry.read',
       'finance.analytics.view',
+      'finance.receivables.view',
     ],
     north,
   );
@@ -160,6 +178,7 @@ export async function seed(db, env) {
         !k.startsWith('finance.') &&
         !k.includes('.pricing.') &&
         !k.includes('.costs.') &&
+        !k.startsWith('rentals.transport_costs.') &&
         ![
           'organization.manage',
           'users.manage',
@@ -239,6 +258,16 @@ export async function seed(db, env) {
     customerId: customer.id,
     branchId: south.id,
     notes: 'E2E financial visibility fixture',
+    transportation: {
+      currency: 'TRY',
+      customerPrice: '1200',
+      customerTax: { mode: 'INCLUSIVE', rate: '20' },
+      supplierQuote: {
+        name: 'E2E transport visibility fixture',
+        amount: '800',
+        tax: { mode: 'EXCLUSIVE', rate: '10' },
+      },
+    },
     items: [
       {
         machineIds: [otherBranch.id],
@@ -284,7 +313,12 @@ export async function seed(db, env) {
     org.id,
     financialWorkOrder.id,
     'cost',
-    { kind: 'LABOR', amount: '98765.4321', currency: 'TRY' },
+    {
+      kind: 'LABOR',
+      amount: '98765.4321',
+      currency: 'TRY',
+      tax: { mode: 'EXCLUSIVE', rate: '0' },
+    },
     randomUUID(),
   );
   const operations = await operationsFixtures(

@@ -91,3 +91,8 @@ export * from './analytics.js';
 export * from './administration.js';
 
 export * from './operations.js';
+
+export * from './tax.js';
+
+export * from './finance-operations.js';
+export * from './rental-transport.js';

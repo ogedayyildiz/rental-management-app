@@ -753,6 +753,12 @@ Examples:
 These should be represented as structured rental charges rather than merged into a free-text total.
 
 # 39. Transport
+The initial quote-level implementation now supports one combined transport charge,
+the subcontractor quote and customer offer price with independent VAT snapshots.
+See [Transportation implementation](25-RENTAL-TRANSPORTATION.md) for immutable
+history, permissions and the separate estimated margin. Vehicle routing, actual
+delivery/collection confirmation and subcontractor settlement remain deferred.
+
 Delivery and collection must be supported as part of the rental workflow.
 Rental transport information may include:
 

@@ -44,7 +44,13 @@ export async function financeFixtures(db, p, org, branchId) {
           category: 'Finance Access',
           branchId,
           acquisitionDate: '2025-01-01',
-          ...(cost === null ? {} : { acquisitionCost: cost, currency }),
+          ...(cost === null
+            ? {}
+            : {
+                acquisitionCost: cost,
+                currency,
+                tax: { mode: 'EXCLUSIVE', rate: '0' },
+              }),
         },
         randomUUID(),
       ),
@@ -65,6 +71,7 @@ export async function financeFixtures(db, p, org, branchId) {
             plannedEndAt: '2026-01-03T00:00:00Z',
             agreedRate: n === 0 ? '600' : '100',
             rateUnit: n === 1 ? 'FIXED_PERIOD' : 'DAILY',
+            tax: { mode: 'EXCLUSIVE', rate: '0' },
             currency: 'TRY',
           },
         ],
@@ -110,7 +117,12 @@ export async function financeFixtures(db, p, org, branchId) {
       org,
       w.id,
       'cost',
-      { kind: 'LABOR', amount, currency },
+      {
+        kind: 'LABOR',
+        amount,
+        currency,
+        tax: { mode: 'EXCLUSIVE', rate: '0' },
+      },
       randomUUID(),
     );
     for (const action of ['open', 'start', 'complete'])

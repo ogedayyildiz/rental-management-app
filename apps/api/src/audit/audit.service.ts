@@ -7,6 +7,13 @@ export interface AuditRecord {
   actorUserId: string;
   actorType: 'USER';
   action:
+    | 'FINANCE_RECORD_CREATED'
+    | 'FINANCE_RECORD_UPDATED'
+    | 'FINANCE_RECORD_CONFIRMED'
+    | 'FINANCE_RECORD_CANCELLED'
+    | 'FINANCE_DOCUMENT_UPDATED'
+    | 'FINANCE_PAYMENT_RECORDED'
+    | 'FINANCE_PAYMENT_REVERSED'
     | 'DEVICE_REGISTERED'
     | 'DEVICE_UPDATED'
     | 'DEVICE_INSTALLED'
@@ -26,6 +33,7 @@ export interface AuditRecord {
     | 'MAINTENANCE_PLAN_CHANGED'
     | 'MAINTENANCE_EXPORTED'
     | 'RENTAL_CREATED'
+    | 'RENTAL_TRANSPORT_CHANGED'
     | 'RENTAL_UPDATED'
     | 'RENTAL_CUSTOMER_CHANGED'
     | 'RENTAL_BRANCH_CHANGED'
@@ -55,6 +63,8 @@ export interface AuditRecord {
     | 'CUSTOMER_ADDRESS_CREATED'
     | 'CUSTOMER_ADDRESS_UPDATED';
   targetType:
+    | 'FinanceRecord'
+    | 'FinancePayment'
     | 'TrackingDevice'
     | 'DeviceInstallation'
     | 'WorkOrder'

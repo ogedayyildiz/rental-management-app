@@ -1,4 +1,6 @@
 'use client';
+import { TaxFields, taxFormValue } from '../tax-fields';
+import { CurrencySelect } from '../currency-select';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { machineCreateSchema, machinePatchSchema } from '@rental/validation';
@@ -68,6 +70,7 @@ export function MachineForm({
     if (canEditCost) {
       input['acquisitionCost'] = str('acquisitionCost') || null;
       input['currency'] = str('currency') || null;
+      input['tax'] = taxFormValue(data);
     }
     const specifications: Record<string, unknown> = {};
     for (const key of measurementFields)
@@ -186,14 +189,15 @@ export function MachineForm({
               </label>
               <label>
                 {t('machines.currency')}
-                <input
+                <CurrencySelect
+                  locale={locale}
                   name="currency"
-                  maxLength={3}
                   defaultValue={canViewCost ? (row?.currency ?? '') : ''}
                   aria-describedby={invalid.length ? errorId : undefined}
                   aria-invalid={invalid.includes('currency')}
                 />
               </label>
+              <TaxFields locale={locale} defaultValue={row?.tax} />
             </>
           )}
         </div>

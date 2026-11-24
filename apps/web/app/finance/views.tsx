@@ -1,6 +1,12 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { translate, type Locale } from '@rental/i18n';
+import {
+  translate,
+  analyticsDurationLabel,
+  formatAnalyticsDuration,
+  type AnalyticsDurationUnit,
+  type Locale,
+} from '@rental/i18n';
 import type {
   AnalyticsMoney,
   AnalyticsReport,
@@ -54,10 +60,12 @@ export function Performance({
   row,
   locale,
   timezone = 'UTC',
+  durationUnit = 'DAYS',
 }: {
   row: AnalyticsRow;
   locale: Locale;
   timezone?: string;
+  durationUnit?: AnalyticsDurationUnit;
 }) {
   const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
   return (
@@ -86,14 +94,28 @@ export function Performance({
         </p>
       )}
       <dl className="finance-operational">
-        {(
-          ['rentalCount', 'activeRentals', 'averageRentalSeconds'] as const
-        ).map((k) => (
+        {(['rentalCount', 'activeRentals'] as const).map((k) => (
           <div key={k}>
             <dt>{t(`finance.${k}`)}</dt>
             <dd>{row[k] ?? '—'}</dd>
           </div>
         ))}
+        <div>
+          <dt>
+            {analyticsDurationLabel(
+              'averageRentalSeconds',
+              durationUnit,
+              locale,
+            )}
+          </dt>
+          <dd>
+            {formatAnalyticsDuration(
+              row.averageRentalSeconds,
+              durationUnit,
+              locale,
+            )}
+          </dd>
+        </div>
         <div>
           <dt>{t('finance.utilization')}</dt>
           <dd>{row.utilization.percentage ?? '—'}</dd>
@@ -104,14 +126,23 @@ export function Performance({
             'rentedSeconds',
             'reservedSeconds',
             'unrentedSeconds',
-            'excludedMachines',
           ] as const
         ).map((k) => (
           <div key={k}>
-            <dt>{t(`finance.${k}`)}</dt>
-            <dd>{row.utilization[k]}</dd>
+            <dt>{analyticsDurationLabel(k, durationUnit, locale)}</dt>
+            <dd>
+              {formatAnalyticsDuration(
+                row.utilization[k],
+                durationUnit,
+                locale,
+              )}
+            </dd>
           </div>
         ))}
+        <div>
+          <dt>{t('finance.excludedMachines')}</dt>
+          <dd>{row.utilization.excludedMachines}</dd>
+        </div>
       </dl>
       {row.lifetime && (
         <details>
@@ -136,6 +167,33 @@ export function Performance({
         </details>
       )}
     </>
+  );
+}
+export function DurationUnitSelect({
+  value,
+  onChange,
+  locale,
+}: {
+  value: AnalyticsDurationUnit;
+  onChange: (value: AnalyticsDurationUnit) => void;
+  locale: Locale;
+}) {
+  return (
+    <label>
+      {translate(locale, 'finance.durationUnit')}
+      <select
+        value={value}
+        onChange={(e) =>
+          onChange(e.target.value === 'HOURS' ? 'HOURS' : 'DAYS')
+        }
+      >
+        {(['HOURS', 'DAYS'] as const).map((unit) => (
+          <option key={unit} value={unit}>
+            {translate(locale, `finance.${unit}`)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 export function Trend({

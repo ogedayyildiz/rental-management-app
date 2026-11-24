@@ -2810,6 +2810,19 @@ depending on currency and locale formatting rules.
 
 Changing the interface language must not change the underlying currency of a financial transaction.
 
+All web currency selectors share exactly three selectable currencies, in this order:
+**TL**, **USD**, **EUR**. TL is the display label for the canonical ISO code `TRY`;
+requests and stored records continue to use `TRY`, `USD`, and `EUR`. This applies
+to Rental pricing, Machine acquisition costs, Maintenance costs, Organization
+default currency, and Finance currency filters in both English and Turkish.
+An empty prompt (or Finance's utilization mode) is not a fourth currency.
+
+This is a selection policy, not an FX conversion or a historical-data migration.
+Existing amounts and currencies remain unchanged. Read contracts, historical
+displays and exports continue to support their recorded ISO codes. Editing an
+older record with another currency preserves that code unless the user explicitly
+selects one of the three supported choices; it is not offered as a new choice.
+
 ---
 
 # 74. Number and Unit Display

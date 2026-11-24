@@ -1,3 +1,4 @@
+import { readTax, taxColumns } from '../finance/tax.js';
 import { assertSchedule } from '../rentals/availability.js';
 import { PrismaRentalRepository } from './prisma.rentals.js';
 import { Prisma } from '@rental/database';
@@ -112,6 +113,7 @@ export class PrismaMaintenanceRepository implements MaintenanceRepository {
         currency: v.currency,
         description: v.description,
         amount: v.amount.toFixed(),
+        tax: readTax(v),
       })),
     });
   }
@@ -413,9 +415,11 @@ export class PrismaMaintenanceRepository implements MaintenanceRepository {
     input: Parameters<MaintenanceRepository['cost']>[2],
   ) {
     assertTenantContext(c);
+    const { tax, ...values } = input;
     await this.db.workOrderCost.create({
       data: {
-        ...input,
+        ...values,
+        ...taxColumns(tax),
         amount: new Prisma.Decimal(input.amount),
         organizationId: c.organizationId,
         workOrderId: id,

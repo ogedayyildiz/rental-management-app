@@ -97,7 +97,12 @@ export async function maintenanceCases(suite, db, fixture, h) {
         t.organization.id,
         row.id,
         'cost',
-        { kind: 'LABOR', amount: '123.123456', currency: 'TRY' },
+        {
+          kind: 'LABOR',
+          amount: '123.123456',
+          tax: { mode: 'EXCLUSIVE', rate: '0' },
+          currency: 'TRY',
+        },
         randomUUID(),
       );
       assert.equal(row.costs[0].amount, '123.123456');
@@ -245,7 +250,12 @@ export async function maintenanceCases(suite, db, fixture, h) {
         t.organization.id,
         row.id,
         'cost',
-        { kind: 'PARTS', amount: '42', currency: 'EUR' },
+        {
+          kind: 'PARTS',
+          amount: '42',
+          tax: { mode: 'EXCLUSIVE', rate: '0' },
+          currency: 'EUR',
+        },
         randomUUID(),
       );
       await db.rolePermission.deleteMany({
@@ -271,7 +281,12 @@ export async function maintenanceCases(suite, db, fixture, h) {
           t.organization.id,
           row.id,
           'cost',
-          { kind: 'PARTS', amount: '1', currency: 'TRY' },
+          {
+            kind: 'PARTS',
+            amount: '1',
+            tax: { mode: 'EXCLUSIVE', rate: '0' },
+            currency: 'TRY',
+          },
           randomUUID(),
         ),
         { code: 'ACCESS_DENIED' },
@@ -482,7 +497,12 @@ export async function maintenanceCases(suite, db, fixture, h) {
         t.organization.id,
         row.id,
         'cost',
-        { kind: 'LABOR', amount: '123', currency: 'TRY' },
+        {
+          kind: 'LABOR',
+          amount: '123',
+          tax: { mode: 'EXCLUSIVE', rate: '0' },
+          currency: 'TRY',
+        },
         randomUUID(),
       );
       const report = await service.report(

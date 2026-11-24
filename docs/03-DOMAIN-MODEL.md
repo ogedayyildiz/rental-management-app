@@ -1531,7 +1531,10 @@ Other
 
 A `RentalCharge` may therefore be associated with the rental.
 
-Detailed pricing rules will be defined later.
+The initial implemented kind is TRANSPORT: one combined customer price and optional
+supplier quote, with separate VAT snapshots in one currency. Revisions preserve
+history; reservation freezes terms. Other charge kinds remain deferred. See
+[Transportation implementation](25-RENTAL-TRANSPORTATION.md).
 
 ---
 
@@ -2492,6 +2495,15 @@ A request is distinct from delivery, acknowledgement, and physical execution.
 The following areas remain intentionally open because they depend on future product scope rather than unresolved core architecture.
 
 ## 48.1 Customer Credit, Invoices, and Payment Tracking
+
+The approved operational implementation now owns `FinanceRecord` (customer
+receivable or machine acquisition/financing payable), `FinanceInstallment` and
+`FinancePayment`. Refer to [ADR-012](decisions/ADR-012-OPERATIONAL-RECEIVABLES-AND-PAYABLES.md)
+and [the implementation contract](24-FINANCE-OPERATIONS-IMPLEMENTATION.md).
+The historical deferral below continues to apply to invoice issuance, customer
+credit facilities and statutory accounting, not the newly approved operational
+balances and partial settlements. Machine, RentalItem/RentalItemTerm and
+WorkOrderCost preserve explicit VAT terms separately from entered monetary values.
 
 The current domain includes operational financial entries but does not make the platform a complete accounting or receivables system.
 

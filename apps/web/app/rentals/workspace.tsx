@@ -59,15 +59,17 @@ export function RentalWorkspace({
         safeErrorKey(
           e,
           e instanceof RentalApiError
-            ? e.code === 'MACHINE_INELIGIBLE'
-              ? 'rentals.ineligible'
-              : e.code === 'INVALID_TRANSITION'
-                ? 'rentals.transition'
-                : e.status === 409
-                  ? 'rentals.conflict'
-                  : e.status === 400
-                    ? 'rentals.invalid'
-                    : 'rentals.error'
+            ? e.code === 'RENTAL_FINANCIAL_REFERENCE'
+              ? 'rentals.financialReference'
+              : e.code === 'MACHINE_INELIGIBLE'
+                ? 'rentals.ineligible'
+                : e.code === 'INVALID_TRANSITION'
+                  ? 'rentals.transition'
+                  : e.status === 409
+                    ? 'rentals.conflict'
+                    : e.status === 400
+                      ? 'rentals.invalid'
+                      : 'rentals.error'
             : 'rentals.error',
         ),
       ),
@@ -339,6 +341,10 @@ export function RentalWorkspace({
               canCreateCustomer={can('customers.create')}
               canPrice={can('rentals.pricing.edit')}
               canViewPrice={can('rentals.pricing.view')}
+              canTransportCosts={
+                can('rentals.transport_costs.view') &&
+                can('rentals.transport_costs.edit')
+              }
               busy={busy}
               onSave={save}
               onClose={() => setForm(false)}

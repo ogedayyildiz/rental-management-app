@@ -379,12 +379,12 @@ export class MaintenanceService {
             row.id,
             parse(maintenanceMaterialSchema, body),
           );
-        else
-          await r.maintenance.cost(
-            c,
-            row.id,
-            parse(maintenanceCostSchema, body),
-          );
+        else {
+          const cost = parse(maintenanceCostSchema, body);
+          if (cost.tax.mode === 'UNSPECIFIED')
+            throw new AccessError('INVALID_INPUT');
+          await r.maintenance.cost(c, row.id, cost);
+        }
         await this.audit(
           r,
           c,

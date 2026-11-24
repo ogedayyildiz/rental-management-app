@@ -1,3 +1,4 @@
+import { expectCurrencyChoices } from './currency-helpers.mjs';
 import { test, expect, json } from './fixtures.mjs';
 import { assertE2E } from './isolation.mjs';
 const form = (page, name) => page.getByRole('form', { name, exact: true });
@@ -35,6 +36,9 @@ test('administration: organization settings and translated account context', asy
   await page.goto('/settings/organization');
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue(
     'E2E Rental Company',
+  );
+  await expectCurrencyChoices(
+    page.getByRole('combobox', { name: 'Default currency', exact: true }),
   );
   await page
     .getByLabel('Legal name', { exact: true })

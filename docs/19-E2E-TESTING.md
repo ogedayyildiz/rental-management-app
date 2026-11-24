@@ -1,5 +1,28 @@
 # Automated browser verification
 
+## Current verification baseline
+
+The latest local verification on **2026-11-24** passed **190 unit/integration/security
+tests and all 55 Chromium Playwright scenarios**, with zero failures/skips, plus
+lint, strict TypeScript, formatting and the full workspace build. The normal local
+database has all 15 Prisma migrations applied; tests use their own disposable
+databases and never reset development data.
+
+Current coverage includes Customers/Machines, Rental lifecycle and partial returns,
+Maintenance/plans/exports, simulator telemetry, Finance estimates, administration,
+Operations/notifications, three-currency selectors, Hours/Days display, VAT/approved
+obligations/collections, and transportation quotes/margin/financial redaction.
+
+The latest observed hosted pass is [run 44485675952](https://github.com/ogedayyildiz/rental-management-app/actions/runs/44485675952)
+at `72b0bb410c699f41a8b39f77aa5e8d1679f07668`, before the operational-finance,
+duration-display and transportation changes. Hosted verification of those latest
+changes is pending; a local pass is not a hosted pass. Dated sections below retain
+their original milestone counts rather than presenting them as today's suite size.
+
+These checks do not verify live Auth0/MFA, real mobile login, Ruptela hardware,
+Xtellio cloud, production ingress/deployment, email delivery or bank/tax activity.
+No personal Auth0 account is used by the automated suite.
+
 ## Purpose and boundaries
 
 Playwright runs the real Next.js pages, server-side API bridge, NestJS application,
@@ -47,7 +70,7 @@ printing it, requires localhost/127.0.0.1, and connects to the administrative `p
 database. The database user needs CREATE DATABASE permission.
 
 Every run creates a fresh `rental_e2e_<random 32 hexadecimal characters>` database,
-applies all committed Prisma migrations and provisions permissions/templates and fixtures.
+applies all Prisma migrations present in the checkout and provisions permissions/templates and fixtures.
 The developer's database is never reset. Drop operations accept only that exact E2E
 name pattern. Normal exit, test failure and handled termination stop owned child processes
 and drop the run database. A local lock prevents concurrent runners sharing artifacts.
@@ -141,12 +164,20 @@ formatting and the full build. It runs on pull requests, manual dispatch and pus
 `codex/verify-telemetry-ci`. Local execution validates the suite; the hosted GitHub job
 must also run on the repository before claiming CI passed.
 
+GitHub only tests the pushed commit, not local uncommitted files. Commit completed
+source, migration and documentation changes together on the authorized CI branch,
+push normally without rewriting history, then match the run's `head_sha` to that
+commit. Confirm every required step and the test counts in its logs. If diagnostics
+expose a defect, fix it without weakening assertions and verify a new commit/run.
+Record the immutable run URL and tested SHA; a green earlier branch run is not
+evidence for a later working tree.
+
 New user-visible workflows require E2E updates and an agent-run relevant browser check
 before technical verification is declared. Keep provider login/MFA, real mobile development
 builds and other truly external verification explicit; never replace them with a claim
 that the synthetic identity harness verified Auth0 itself.
 
-## Verified baseline
+## Historical baseline (2026-10-21)
 
 Local verification on 2026-10-21 passed 109 unit/integration/security tests and all
 17 Chromium E2E scenarios with no retries. Each browser run applied all migrations
@@ -206,3 +237,26 @@ Docker engine must not leave a lock or attempt to drop an uncreated database.
 
 See [Operations implementation](23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md) for
 metric, authorization and notification semantics.
+
+The existing Machine, Rental, Maintenance, Organization settings and Finance
+scenarios also assert that currency selectors offer only TL (`TRY`), USD and EUR.
+Machine create/edit verifies persisted amounts/codes and that switching EN/TR
+does not change the chosen currency; Rental and Maintenance exercise TL through
+their normal save workflows. Currency selection never performs conversion.
+
+Operational-finance scenarios in `finance-operations.spec.mjs` cover VAT-inclusive/
+exclusive/non-applicable records, explicit approval, partial collection, rejection
+of excess payments, invoice-reference correction, reversal, balances, leasing
+deposit/installments, open-account cancellation and reload persistence. Selected-branch,
+no-finance, platform-only and second-tenant personas verify financial isolation.
+The limited persona has receivables.view (not manage/payment permission) for scoped
+balance checks; acquisition/rental/maintenance money permissions remain absent.
+Existing Machine/Rental/Maintenance forms explicitly select VAT terms and continue
+to test the real source-domain contracts. Production Auth0 remains unchanged.
+
+Transportation adds two browser scenarios in `transportation.spec.mjs`: actual
+Rental form creation/edit/reload, separate VAT bases and margin, historical quotes,
+reservation freeze, Finance/XLSX results, cancellation and no-finance redaction.
+The full suite is now 55 scenarios. Focused execution is
+`pnpm test:e2e --grep transportation`; cross-domain release verification still runs
+the full suite. See [Transportation](25-RENTAL-TRANSPORTATION.md) for its contracts.

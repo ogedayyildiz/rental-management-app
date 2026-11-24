@@ -104,6 +104,7 @@ export class AdministrationService {
               : key.split('.')[0]!,
         sensitive:
           key.startsWith('finance.') ||
+          key.startsWith('rentals.transport_costs.') ||
           key.includes('.pricing.') ||
           key.includes('.costs.'),
         grantable: c.permissions.includes(key),

@@ -1,7 +1,14 @@
 # Database, access and audit foundation
 
-This describes the original foundation phase. Authentication and invitation
-deferrals below are superseded by [the authentication/onboarding implementation](13-AUTHENTICATION-AND-ONBOARDING.md).
+This is a historical record of the original foundation phase, not the current
+feature inventory. The reject-all verifier and invitation deferrals below were
+superseded by [Auth0/onboarding](13-AUTHENTICATION-AND-ONBOARDING.md). Role, branch,
+membership and audit-read administration is implemented in
+[Tenant administration](22-TENANT-ADMINISTRATION-IMPLEMENTATION.md). Product-domain
+tables and Timescale hypertables now exist; the current permission catalog extends
+beyond the foundation keys listed here. See [README](../README.md#20-current-project-phase)
+and the [verification baseline](19-E2E-TESTING.md#current-verification-baseline)
+for current scope and test results. The underlying trust/isolation rules still apply.
 
 This records implementation choices within the existing architecture and ADR-008.
 It does not replace the architecture, domain, authorization or security documents.

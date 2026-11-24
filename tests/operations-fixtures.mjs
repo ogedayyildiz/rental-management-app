@@ -61,6 +61,7 @@ export async function operationsFixtures(
             plannedStartAt: new Date(+now - 2 * 86400000).toISOString(),
             plannedEndAt: new Date(+now - 3600000).toISOString(),
             agreedRate: '123456.78',
+            tax: { mode: 'EXCLUSIVE', rate: '0' },
             currency: 'TRY',
             rateUnit: 'DAILY',
           },

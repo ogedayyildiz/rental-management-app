@@ -1,4 +1,5 @@
 'use client';
+import { TaxSummary } from '../tax-fields';
 import { safeErrorKey } from '../../lib/ui-error';
 import { useAppLocale } from '../app-shell';
 import { accountResponse } from '../../lib/account';
@@ -371,6 +372,16 @@ export function MachineWorkspace({
                       <dt>{t('machines.acquisitionCost')}</dt>
                       <dd>
                         {detail.acquisitionCost ?? '—'} {detail.currency}
+                        <p>
+                          <TaxSummary tax={detail.tax} locale={locale} />
+                        </p>
+                        {can('finance.payables.view') && (
+                          <a
+                            href={`/finance/records?organizationId=${org}&kind=PAYABLE&machineId=${detail.id}`}
+                          >
+                            {t('cash.openMachine')}
+                          </a>
+                        )}
                       </dd>
                     </div>
                   )}

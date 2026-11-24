@@ -1,3 +1,4 @@
+import { readTax, taxColumns } from '../finance/tax.js';
 import { Prisma } from '@rental/database';
 import type { PrismaClient } from '@rental/database';
 import { machineViewSchema } from '@rental/validation';
@@ -34,6 +35,7 @@ function view(row: Row) {
     modelYear: row.modelYear,
     acquisitionDate: row.acquisitionDate?.toISOString().slice(0, 10) ?? null,
     acquisitionCost: row.acquisitionCost?.toFixed() ?? null,
+    tax: readTax(row),
     currency: row.currency,
     ownershipType: row.ownershipType,
     branchId: row.branchId,
@@ -209,6 +211,7 @@ export class PrismaMachineRepository implements MachineRepository {
       category: _category,
       acquisitionDate,
       acquisitionCost,
+      tax,
       ...rest
     } = input;
     void _manufacturer;
@@ -216,6 +219,7 @@ export class PrismaMachineRepository implements MachineRepository {
     void _category;
     const data = {
       ...rest,
+      ...taxColumns(tax),
       modelId: model.id,
       fleetNumberKey: key(input.fleetNumber),
       acquisitionDate: acquisitionDate

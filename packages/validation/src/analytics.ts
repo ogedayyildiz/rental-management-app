@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import { rentalStatusSchema } from './rentals.js';
+import { financeCurrencySchema } from './finance-operations.js';
 
 export const analyticsQuerySchema = z
   .strictObject({
     locale: z.enum(['en', 'tr']).default('en'),
+    durationUnit: z.enum(['HOURS', 'DAYS']).default('DAYS'),
     preset: z
       .enum([
         'THIS_MONTH',
@@ -119,11 +121,25 @@ export const analyticsRowSchema = z.object({
   averageRentalSeconds: z.number().nullable(),
 });
 export const analyticsReportSchema = z.object({
+  transportation: z
+    .array(
+      z.object({
+        status: rentalStatusSchema,
+        currency: financeCurrencySchema,
+        count: z.number().int(),
+        customerNet: z.string().optional(),
+        supplierNet: z.string().nullable().optional(),
+        estimatedMargin: z.string().nullable().optional(),
+        missingSupplierQuotes: z.number().int().optional(),
+      }),
+    )
+    .optional(),
   valuationPolicy: z.literal('ESTIMATE_V1'),
   generatedAt: z.string(),
   timezone: z.string(),
   period: z.object({ from: z.string(), to: z.string() }),
   visibility: z.object({
+    transportCosts: z.boolean().optional(),
     acquisition: z.boolean(),
     pricing: z.boolean(),
     costs: z.boolean(),

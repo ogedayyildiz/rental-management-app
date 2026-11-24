@@ -345,6 +345,13 @@ export function CustomerWorkspace({
               {t('customers.back')}
             </button>
             <h2>{customer.displayName}</h2>
+            {can('finance.receivables.view') && (
+              <a
+                href={`/finance/records?organizationId=${org}&kind=RECEIVABLE&customerId=${customer.id}`}
+              >
+                {t('cash.openCustomer')}
+              </a>
+            )}
             {can('finance.analytics.view') && can('machines.read') && (
               <FinancePanel
                 key={'finance' + org + customer.id}

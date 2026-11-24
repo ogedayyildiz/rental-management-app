@@ -1,3 +1,8 @@
+import { taxSchema } from './tax.js';
+import {
+  rentalTransportInputSchema,
+  rentalTransportViewSchema,
+} from './rental-transport.js';
 import { z } from 'zod';
 import { customerCursorSchema } from './customers.js';
 import { machineCostSchema, machineSpecificationsSchema } from './machines.js';
@@ -42,6 +47,7 @@ export const rentalItemInputSchema = z
       .nullable()
       .optional(),
     commercialNotes: note(2000).optional(),
+    tax: taxSchema.optional(),
   })
   .refine(
     (v) =>
@@ -65,6 +71,7 @@ export const rentalItemInputSchema = z
     { path: ['agreedRate'] },
   );
 export const rentalCreateSchema = z.strictObject({
+  transportation: rentalTransportInputSchema.nullable().optional(),
   customerId: z.uuid(),
   branchId: z.uuid().nullable().default(null),
   notes: note(5000).default(null),
@@ -72,6 +79,7 @@ export const rentalCreateSchema = z.strictObject({
 });
 export const rentalPatchSchema = z
   .strictObject({
+    transportation: rentalTransportInputSchema.nullable().optional(),
     customerId: z.uuid().optional(),
     branchId: z.uuid().nullable().optional(),
     notes: note(5000).optional(),
@@ -103,6 +111,7 @@ export const rentalExtendSchema = z.strictObject({
         itemId: z.uuid(),
         plannedEndAt: timestamp,
         agreedRate: machineCostSchema.optional(),
+        tax: taxSchema.optional(),
         rateUnit: rentalRateUnitSchema.optional(),
         currency: z
           .string()
@@ -168,12 +177,14 @@ export const rentalAssignmentViewSchema = z.object({
   reason: z.string().nullable(),
 });
 const price = {
+  tax: taxSchema.optional(),
   agreedRate: machineCostSchema.nullable().optional(),
   rateUnit: rentalRateUnitSchema.nullable().optional(),
   currency: z.string().nullable().optional(),
   commercialNotes: z.string().nullable().optional(),
 };
 export const rentalTermViewSchema = z.object({
+  tax: taxSchema,
   id: z.uuid(),
   plannedStartAt: timestamp,
   plannedEndAt: timestamp,
@@ -195,6 +206,8 @@ export const rentalItemViewSchema = z.object({
   terms: z.array(rentalTermViewSchema).optional(),
 });
 export const rentalViewSchema = z.object({
+  transportation: rentalTransportViewSchema.nullable().default(null),
+  transportationHistory: z.array(rentalTransportViewSchema).default([]),
   id: z.uuid(),
   organizationId: z.uuid(),
   number: z.string(),

@@ -12,7 +12,13 @@ import {
   rentalCancelSchema,
   identifierSchema,
 } from '@rental/validation';
-import type { RentalView, RentalItemInput } from '@rental/validation';
+import type {
+  RentalView,
+  RentalItemInput,
+  RentalTransportInput,
+  RentalTransportView,
+} from '@rental/validation';
+import { transportAmounts } from './transportation.js';
 import type { TenantPermission } from '@rental/permissions';
 import { AccessService, requirePermission } from '../access/access.service.js';
 import type {
@@ -69,6 +75,15 @@ export class RentalService {
     });
   }
   private visible(c: TenantContext, row: RentalView): RentalView {
+    row = {
+      ...row,
+      transportation: row.transportation
+        ? this.visibleTransport(c, row.transportation)
+        : null,
+      transportationHistory: row.transportationHistory.map((q) =>
+        this.visibleTransport(c, q),
+      ),
+    };
     if (c.permissions.includes('rentals.pricing.view')) return row;
     return {
       ...row,
@@ -79,6 +94,7 @@ export class RentalService {
           currency,
           commercialNotes,
           terms,
+          tax,
           ...rest
         } = item;
         void agreedRate;
@@ -86,8 +102,72 @@ export class RentalService {
         void currency;
         void commercialNotes;
         void terms;
+        void tax;
         return rest;
       }),
+    };
+  }
+  private visibleTransport(
+    c: TenantContext,
+    quote: RentalTransportView,
+  ): RentalTransportView {
+    const pricing = c.permissions.includes('rentals.pricing.view'),
+      costs = c.permissions.includes('rentals.transport_costs.view');
+    const result: RentalTransportView = {
+      id: quote.id,
+      createdAt: quote.createdAt,
+      removedAt: quote.removedAt,
+    };
+    if (pricing || costs) result.currency = quote.currency;
+    if (pricing) {
+      result.customerPrice = quote.customerPrice;
+      result.customerTax = quote.customerTax;
+    }
+    if (costs) result.supplierQuote = quote.supplierQuote;
+    if (
+      pricing &&
+      costs &&
+      quote.supplierQuote &&
+      quote.customerPrice &&
+      quote.customerTax
+    ) {
+      const amounts = transportAmounts({
+        currency: quote.currency!,
+        customerPrice: quote.customerPrice,
+        customerTax: quote.customerTax,
+        supplierQuote: quote.supplierQuote,
+      });
+      result.estimatedMargin = amounts.estimatedMargin!;
+    }
+    return result;
+  }
+  private transport(
+    c: TenantContext,
+    input: RentalTransportInput | null | undefined,
+    old: RentalTransportView | null = null,
+  ) {
+    if (input === undefined) return undefined;
+    requirePermission(c, 'rentals.pricing.edit');
+    if (input === null) {
+      if (old?.supplierQuote)
+        requirePermission(c, 'rentals.transport_costs.edit');
+      return null;
+    }
+    if (input.supplierQuote !== undefined)
+      requirePermission(c, 'rentals.transport_costs.edit');
+    // A preserved hidden quote cannot silently be relabeled in another currency.
+    if (
+      old?.supplierQuote &&
+      old.currency !== input.currency &&
+      input.supplierQuote === undefined
+    )
+      throw new AccessError('INVALID_INPUT');
+    return {
+      ...input,
+      supplierQuote:
+        input.supplierQuote === undefined
+          ? (old?.supplierQuote ?? null)
+          : input.supplierQuote,
     };
   }
   private async getRow(r: RentalRepositories, c: TenantContext, id: unknown) {
@@ -139,12 +219,18 @@ export class RentalService {
   private pricing(c: TenantContext, items: RentalItemInput[]) {
     if (
       items.some((i) =>
-        ['agreedRate', 'rateUnit', 'currency', 'commercialNotes'].some(
+        ['agreedRate', 'rateUnit', 'currency', 'commercialNotes', 'tax'].some(
           (k) => k in i,
         ),
       )
     )
       requirePermission(c, 'rentals.pricing.edit');
+    if (
+      items.some(
+        (i) => i.agreedRate != null && (!i.tax || i.tax.mode === 'UNSPECIFIED'),
+      )
+    )
+      throw new AccessError('INVALID_INPUT');
   }
   private async validateItems(
     r: RentalRepositories,
@@ -209,6 +295,7 @@ export class RentalService {
       agreedRate: i.agreedRate ?? null,
       rateUnit: i.rateUnit ?? null,
       currency: i.currency ?? null,
+      tax: i.tax ?? { mode: 'UNSPECIFIED' },
       commercialNotes: i.commercialNotes ?? null,
     }));
   }
@@ -282,12 +369,15 @@ export class RentalService {
   ) {
     return this.run(p, o, 'rentals.create', true, async (r, c) => {
       const input = parse(rentalCreateSchema, body);
+      input.transportation = this.transport(c, input.transportation);
       this.pricing(c, input.items);
       await r.rentals.requireCustomer(c, input.customerId);
       await this.branch(r, c, input.branchId);
       await this.validateItems(r, c, input.branchId, input.items);
       const row = await r.rentals.create(c, input);
       await this.audit(r, c, requestId, row.id, 'RENTAL_CREATED');
+      if (input.transportation)
+        await this.audit(r, c, requestId, row.id, 'RENTAL_TRANSPORT_CHANGED');
       if (input.items.some((i) => i.machineIds.length))
         await this.audit(r, c, requestId, row.id, 'RENTAL_MACHINE_ASSIGNED');
       if (input.items.some((i) => i.agreedRate != null))
@@ -307,6 +397,11 @@ export class RentalService {
       if (!['DRAFT', 'QUOTED'].includes(row.status))
         throw new AccessError('INVALID_TRANSITION');
       const input = parse(rentalPatchSchema, body);
+      input.transportation = this.transport(
+        c,
+        input.transportation,
+        row.transportation,
+      );
       if (input.items) {
         this.pricing(c, input.items);
         if (
@@ -326,6 +421,8 @@ export class RentalService {
       );
       await r.rentals.edit(c, row.id, input);
       await this.audit(r, c, requestId, row.id, 'RENTAL_UPDATED');
+      if (input.transportation !== undefined)
+        await this.audit(r, c, requestId, row.id, 'RENTAL_TRANSPORT_CHANGED');
       if (input.customerId && input.customerId !== row.customerId)
         await this.audit(r, c, requestId, row.id, 'RENTAL_CUSTOMER_CHANGED');
       if (branch !== row.branchId)
@@ -381,6 +478,7 @@ export class RentalService {
               agreedRate: item.agreedRate!,
               rateUnit: item.rateUnit!,
               currency: item.currency!,
+              tax: item.tax ?? { mode: 'UNSPECIFIED' },
             });
           await this.states(
             r,
@@ -680,16 +778,29 @@ export class RentalService {
         if (
           change.agreedRate !== undefined ||
           change.rateUnit !== undefined ||
-          change.currency !== undefined
+          change.currency !== undefined ||
+          change.tax !== undefined
         )
           requirePermission(c, 'rentals.pricing.edit');
         const last = item.terms?.at(-1);
+        const nextTax = change.tax ??
+          last?.tax ??
+          item.tax ?? { mode: 'UNSPECIFIED' };
+        if (
+          (change.agreedRate !== undefined ||
+            change.rateUnit !== undefined ||
+            change.currency !== undefined ||
+            change.tax !== undefined) &&
+          nextTax.mode === 'UNSPECIFIED'
+        )
+          throw new AccessError('INVALID_INPUT');
         await r.rentals.term(c, item.id, {
           plannedStartAt: item.plannedEndAt,
           plannedEndAt: change.plannedEndAt,
           agreedRate: change.agreedRate ?? last?.agreedRate ?? item.agreedRate!,
           rateUnit: change.rateUnit ?? last?.rateUnit ?? item.rateUnit!,
           currency: change.currency ?? last?.currency ?? item.currency!,
+          tax: change.tax ?? last?.tax ?? item.tax ?? { mode: 'UNSPECIFIED' },
         });
         await r.rentals.extend(c, item.id, change.plannedEndAt);
       }
@@ -702,7 +813,8 @@ export class RentalService {
           (i) =>
             i.agreedRate !== undefined ||
             i.rateUnit !== undefined ||
-            i.currency !== undefined,
+            i.currency !== undefined ||
+            i.tax !== undefined,
         )
       )
         await this.audit(r, c, requestId, row.id, 'RENTAL_TERMS_CHANGED');
@@ -835,6 +947,8 @@ export class RentalService {
           ? structuredClone(existing)
           : {
               id: 'availability',
+              transportation: null,
+              transportationHistory: [],
               organizationId: c.organizationId,
               number: '',
               customerId: '',

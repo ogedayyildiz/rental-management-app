@@ -1,10 +1,12 @@
 # Rental Management and Equipment Tracking Platform
 
-Multi-tenant SaaS platform for equipment rental management, fleet operations, maintenance, telemetry, GPS tracking, CAN-based machine data, remote machine actions, financial analytics, documents, and reporting.
+Multi-tenant SaaS platform for equipment rental operations, fleet management, maintenance, telemetry and operational finance.
 
-> **Project status:** Customers, Machines, Rentals, Maintenance, simulator-backed Telemetry and Finance / Analytics Phase 1 implemented.
+> **Project status — 2026-11-24:** The core web platform includes Auth0/onboarding, Customers, Machines, Rentals, Maintenance/plans, simulator-backed Telemetry, Finance/Analytics, operational receivables/payables/settlements, tenant administration, Operations/notifications and rental transportation quotes.
 >
-> Real Auth0 web authentication, platform bootstrap, two-user tenant onboarding, Customers, Machines and Rentals have real-tenant browser verification. The preceding [hosted CI baseline](docs/19-E2E-TESTING.md#hosted-verification-2026-11-18) passed 111 unit/integration tests and 19 browser scenarios, including Maintenance plans and simulator-backed Telemetry. See the [Maintenance](docs/18-MAINTENANCE-IMPLEMENTATION.md), [Telemetry](docs/20-TELEMETRY-FOUNDATION.md) and [Finance](docs/21-FINANCE-ANALYTICS-IMPLEMENTATION.md) implementation guides. Finance uses the approved ESTIMATE_V1 policy, explicitly separated from invoicing/accounting. Real telemetry hardware/provider access, production ingress and real mobile login remain separate verification gates.
+> The latest local baseline is **190 unit/integration tests and 55 Playwright scenarios**, plus lint, strict TypeScript, formatting and full build. See the [verification record](docs/19-E2E-TESTING.md#current-verification-baseline) for dated local and hosted results; older milestone counts are historical.
+>
+> Real Auth0 web login, platform bootstrap and tenant onboarding were separately verified. Browser automation uses isolated test personas with real database authorization, not personal Auth0 credentials. Real Ruptela/Xtellio access, production ingress, invitation email delivery, mobile features, remote commands and geofencing remain deferred. Financial estimates and recorded settlements do not constitute statutory accounting or verified bank activity.
 
 See [Machine implementation and smoke test](docs/16-MACHINE-IMPLEMENTATION.md) for state dimensions, branch scope, specifications and acquisition-cost permissions.
 
@@ -12,8 +14,7 @@ See [Customer implementation contracts](docs/15-CUSTOMER-IMPLEMENTATION.md) for 
 
 See [authentication and onboarding setup](docs/13-AUTHENTICATION-AND-ONBOARDING.md)
 for required environment values, Auth0 dashboard steps, callback URLs and current
-verification limits. This supersedes authentication/onboarding deferrals in the
-original bootstrap instructions below. The API and web server now require Auth0
+verification limits. The API and web server require Auth0
 configuration at startup; no development authentication bypass exists.
 
 For first-time Auth0 setup, follow the [local verification checklist](docs/14-AUTH0-LOCAL-VERIFICATION.md),
@@ -25,7 +26,7 @@ including the audited one-time platform operator command and two-user browser/mo
 
 The platform is designed for rental companies managing construction equipment, access equipment, forklifts, telehandlers, and other serialized machinery.
 
-Primary capabilities include:
+Implemented web capabilities include:
 
 - organization and branch management;
 - user memberships, roles, and permissions;
@@ -34,21 +35,20 @@ Primary capabilities include:
 - reservations and rentals;
 - machine assignment and replacement history;
 - maintenance planning and work orders;
-- faults and inspections;
-- telemetry and GPS tracking;
-- custom CAN data decoding;
-- remote machine commands;
-- profitability, ROI, payback, and utilization analytics;
-- documents and reports;
-- notifications;
-- audit history;
-- future AI-assisted technical support.
+- canonical faults, telemetry history and last-known GPS maps using the simulator;
+- estimated rental value, contribution, acquisition recovery and utilization analytics;
+- explicit VAT terms, approved receivables, acquisition commitments and partial settlements;
+- combined transportation quotes and separately permissioned estimated margin;
+- maintenance PDF/XLSX and Finance analytics XLSX exports;
+- operational dashboard, scoped search and personal in-app notifications;
+- immutable audit history and tenant administration.
 
-The product will support:
+Real provider decoding/ingress, remote commands, geofencing, statutory accounting,
+invoice issuance, automatic email delivery and AI assistance are future scope.
 
-- Web;
-- iOS;
-- Android.
+Web is the implemented operational client. React Native/Expo has an authentication
+foundation and shared API contracts for iOS/Android; mobile domain UIs and real-device
+verification remain deferred.
 
 Initial user-facing languages:
 
@@ -61,7 +61,13 @@ Initial user-facing languages:
 
 The platform uses a TypeScript monorepo.
 
-Core stack:
+The following is the documented architecture direction, not a claim that every
+integration is deployed. The running web/API uses Next.js, NestJS, PostgreSQL/
+TimescaleDB, Prisma, Zod, Auth0, MapLibre and ECharts. Redis is available locally;
+production queues, object storage, observability and cloud provisioning are not
+established by the local test/build baseline.
+
+Architecture stack:
 
 ```text
 Language:
@@ -103,7 +109,7 @@ Object Storage:
 S3-compatible storage
 
 Authentication:
-OpenID Connect
+OpenID Connect (managed Auth0 behind IdentityVerifier)
 
 Observability:
 Sentry + OpenTelemetry
@@ -180,10 +186,10 @@ TELEMETRY DEVICES / PROVIDERS
 
 ## 4. Repository Structure
 
-Expected repository structure:
+Repository structure (implementation guides continue through document 25):
 
 ```text
-rental-platform/
+rental-management/
 ├── AGENTS.md
 ├── README.md
 │
@@ -210,7 +216,9 @@ rental-platform/
 │       ├── ADR-007-SEPARATE-MACHINE-STATE-DIMENSIONS.md
 │       ├── ADR-008-PERMISSION-BASED-AUTHORIZATION.md
 │       ├── ADR-009-REMOTE-COMMAND-SAFETY-MODEL.md
-│       └── ADR-010-POSTGRESQL-TIMESCALEDB.md
+│       ├── ADR-010-POSTGRESQL-TIMESCALEDB.md
+│       ├── ADR-011-OIDC-AUTHENTICATION-PROVIDER.md
+│       └── ADR-012-OPERATIONAL-RECEIVABLES-AND-PAYABLES.md
 │
 ├── apps/
 │   ├── web/
@@ -233,7 +241,8 @@ rental-platform/
 └── infrastructure/
 ```
 
-The exact package structure may evolve during implementation, but the documented module and dependency boundaries should be preserved.
+The documented module and dependency boundaries must be preserved. Current web
+routes and their implementation guides are indexed in section 20 below.
 
 ---
 
@@ -518,22 +527,24 @@ Machine maintenance history should be exportable in professional PDF and structu
 
 ## 13. Finance and Analytics
 
-The platform provides management analytics rather than replacing a full accounting system.
+The platform provides management analytics and separately approved operational
+obligations/settlements rather than replacing a statutory accounting system.
 
 Key metrics include:
 
-- attributed rental revenue;
+- ESTIMATE_V1 contracted, accrued and completed rental estimates;
 - acquisition cost;
 - maintenance cost;
-- machine contribution;
-- ROI;
-- payback;
-- commercial utilization;
-- physical utilization;
-- downtime;
-- revenue per operating hour;
-- maintenance cost per operating hour;
-- resale and lifecycle analysis.
+- estimated contribution before unmodeled costs;
+- acquisition recovery estimates;
+- calendar rental utilization and rented/unrented time, displayed in Hours or Days;
+- separately reported transportation margin excluding VAT.
+
+Currencies remain separate: TL (stored TRY), USD and EUR. ESTIMATE_V1 never creates
+customer debt. Approved receivables, acquisition cash/open-account/leasing plans and
+partial payments/collections live in Operational Finance. Historical VAT remains
+unspecified; absence of an invoice does not imply exemption. Transportation quotes
+do not automatically create obligations or count toward machine earnings.
 
 Monetary values require explicit currency and decimal-safe handling.
 
@@ -542,6 +553,9 @@ Financial calculations must be centralized.
 ---
 
 ## 14. Remote Machine Commands
+
+This is the future safety architecture; remote commands are not implemented or
+verified in the current platform.
 
 Remote commands are asynchronous safety-sensitive operations.
 
@@ -620,14 +634,30 @@ pnpm install --frozen-lockfile
 
 On a fresh checkout, copy `.env.example` to `.env`. Set a local PostgreSQL password
 and update the matching password in `DATABASE_URL`. Do not overwrite an existing
-`.env`. The API uses PostgreSQL; queue integration remains deferred.
+`.env`. Configure real Auth0 values using [the local verification guide](docs/14-AUTH0-LOCAL-VERIFICATION.md),
+including the web server's `apps/web/.env.local`. Never copy real credentials into
+tests or commit local environment files. The API uses PostgreSQL; queue consumers
+remain deferred.
 
 ```sh
 pnpm infra:up
 pnpm db:migrate
 pnpm db:seed
-pnpm dev
+pnpm build
+pnpm --filter @rental/api dev
 ```
+
+Keep the API terminal running. In a second terminal at the repository root:
+
+```sh
+pnpm --filter @rental/web dev
+```
+
+Open [the operational dashboard](http://127.0.0.1:3000/dashboard), using
+`127.0.0.1` consistently with Auth0's configured URLs. Both processes are needed:
+Next.js serves the UI/session bridge; NestJS enforces business rules and database
+authorization. Existing operators do not rerun bootstrap. First-time provisioning
+uses the audited flow in the Auth0 guide, never a direct database grant.
 
 `infra:up` starts PostgreSQL 17 with TimescaleDB in one container and Redis in
 another, using the shared-cluster option in ADR-010. Published infrastructure
@@ -636,22 +666,30 @@ their data volumes.
 
 Development endpoints:
 
-| Application | Address                        | Behavior                                |
-| ----------- | ------------------------------ | --------------------------------------- |
-| Web         | `http://127.0.0.1:3000`        | Localized bootstrap screen              |
-| API         | `http://127.0.0.1:3001/health` | Process liveness                        |
-| Telemetry   | `http://127.0.0.1:3002/health` | Process liveness; no ingestion listener |
-| Worker      | `http://127.0.0.1:3003/health` | Process liveness; no job consumers      |
-| Mobile      | `http://localhost:8081`        | Expo development server                 |
+| Application | Address                           | Behavior                                                                     |
+| ----------- | --------------------------------- | ---------------------------------------------------------------------------- |
+| Web         | `http://127.0.0.1:3000/dashboard` | Authenticated EN/TR operational application                                  |
+| API         | `http://127.0.0.1:3001/health`    | Process liveness; business API on the same port                              |
+| Telemetry   | `http://127.0.0.1:3002/health`    | Optional process liveness; simulator uses the ingestion application directly |
+| Worker      | `http://127.0.0.1:3003/health`    | Process liveness; no job consumers                                           |
+| Mobile      | `http://localhost:8081`           | Expo development server                                                      |
 
-The three backend shells load the root `.env`; their ports and bind address can
+The backend processes load the root `.env`; their ports and bind address can
 be configured there. Health endpoints are liveness checks only and do not claim
-database, queue, or provider readiness. Protected branch endpoints exist but the
-default authentication verifier rejects all credentials until a verified identity
-adapter is supplied. There is no development authentication bypass.
+database, queue, or provider readiness. Auth0 validates normal application identity;
+database Membership/Role/Permission/BranchScope/PlatformAccess governs authorization.
+There is no development authentication bypass. The telemetry HTTP process does not
+expose production provider ingress; see [the simulator guide](docs/20-TELEMETRY-FOUNDATION.md#api-ui-and-simulator).
 
-`pnpm dev` builds shared dependencies first and watches the configuration and
-translation packages. To use Expo's interactive shortcuts, run mobile separately:
+`pnpm dev` is an alternative that starts all workspace development tasks after
+building their dependencies, including mobile/telemetry/worker and config/i18n watches.
+For web-only work, use the two terminals above. API/web source edits reload in dev
+mode; shared packages are consumed from `dist`, so rebuild changed shared packages
+and restart dependent processes when needed. Refreshing a browser alone cannot
+update a stopped server or stale compiled package. Production `start` commands
+require a fresh build and process restart.
+
+To inspect the existing Expo foundation separately:
 
 ```sh
 pnpm --filter @rental/mobile dev
@@ -671,6 +709,7 @@ pnpm build
 pnpm typecheck
 pnpm lint
 pnpm test
+pnpm test:e2e
 pnpm format:check
 pnpm format
 ```
@@ -684,12 +723,16 @@ configuration, database constraints, tenant isolation, permissions and auditing.
 Foundation tests require local PostgreSQL and create/drop a uniquely named test
 database; the local account needs CREATEDB. Existing development data is preserved.
 
-Prisma schema/migrations, shared validation and permission definitions now support
-the API foundation. The seed inserts essential permissions only, without users,
-organizations or roles. The initial screens use English; language selection,
-BullMQ jobs, OIDC integration, onboarding and business workflows remain deferred.
-See [foundation implementation notes](docs/12-FOUNDATION-IMPLEMENTATION.md) for
-schema details, trust boundaries, verification and scoped implementation choices.
+The seed upserts the permission catalog without creating users, organizations or
+memberships. Additive migrations grant approved new permissions to existing
+administration-template roles; onboarding creates tenant roles. EN/TR navigation,
+Auth0 and the documented business workflows are implemented.
+
+Playwright needs Chromium (`pnpm exec playwright install chromium`) and creates,
+migrates and seeds its own disposable database. It starts/stops its own API/web;
+ordinary `pnpm dev` is not required. See [E2E testing](docs/19-E2E-TESTING.md) for
+ports, cleanup, personas, artifacts and hosted CI. Never reset the development
+database to prepare tests.
 
 On Windows PowerShell, use `pnpm.cmd` instead of `pnpm` if execution policy blocks
 the PowerShell shim. No global execution-policy change is needed.
@@ -732,9 +775,13 @@ Important coverage includes:
 - telemetry normalization;
 - device installation resolution;
 - telemetry source resolution;
-- remote-command transitions.
+- financial redaction, VAT, collections and transportation quote history;
+- actual browser workflows with isolated personas.
 
 Negative tests are required for sensitive authorization behavior.
+Remote-command tests will be required when that domain is explicitly implemented.
+The [current verification baseline](docs/19-E2E-TESTING.md#current-verification-baseline)
+distinguishes local results, hosted GitHub runs and external verification gates.
 
 ---
 
@@ -761,41 +808,30 @@ Architecture should not drift silently through implementation shortcuts.
 
 ## 20. Current Project Phase
 
-The current sequence is:
+The core operational web platform is implemented. Navigation and returned data use
+effective permissions and tenant/branch scope; PlatformAccess grants no implicit
+tenant access. The following guides describe current behavior rather than future scope:
 
-```text
-Architecture and Product Documentation
-        ↓
-Architecture Decision Records
-        ↓
-AGENTS.md
-        ↓
-README.md
-        ↓
-Repository Bootstrap
-        ↓
-Core Infrastructure
-        ↓
-Domain Implementation
-        ↓
-Web / Mobile Implementation
-        ↓
-Telemetry Integration
-        ↓
-Testing and Deployment
-```
+| Area / route                                          | Implementation guide                                                                                                                                   |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Account, login and onboarding `/`                     | [Auth0/onboarding](docs/13-AUTHENTICATION-AND-ONBOARDING.md), [real-provider setup](docs/14-AUTH0-LOCAL-VERIFICATION.md)                               |
+| Customers `/customers`                                | [Customers](docs/15-CUSTOMER-IMPLEMENTATION.md)                                                                                                        |
+| Machines `/machines`                                  | [Machines](docs/16-MACHINE-IMPLEMENTATION.md)                                                                                                          |
+| Rentals/reservations/contracts `/rentals`             | [Rental workflow](docs/17-RENTAL-IMPLEMENTATION.md), [transportation quotes](docs/25-RENTAL-TRANSPORTATION.md)                                         |
+| Maintenance/plans `/maintenance`                      | [Maintenance](docs/18-MAINTENANCE-IMPLEMENTATION.md)                                                                                                   |
+| Devices `/devices`, Machine telemetry                 | [Simulator-backed telemetry](docs/20-TELEMETRY-FOUNDATION.md)                                                                                          |
+| Finance analytics `/finance`                          | [ESTIMATE_V1 and Hours/Days](docs/21-FINANCE-ANALYTICS-IMPLEMENTATION.md)                                                                              |
+| Payments/collections `/finance/records`               | [VAT and operational finance](docs/24-FINANCE-OPERATIONS-IMPLEMENTATION.md), [ADR-012](docs/decisions/ADR-012-OPERATIONAL-RECEIVABLES-AND-PAYABLES.md) |
+| Settings `/settings`                                  | [Organization, roles, branches, invitations and audit](docs/22-TENANT-ADMINISTRATION-IMPLEMENTATION.md)                                                |
+| Operational home `/dashboard`, inbox `/notifications` | [Operations and personal notifications](docs/23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md)                                                                |
 
-The database/migration, tenant-context, permission and audit foundation is in place.
-Auth0, invitation/administration, Customers and Machines are implemented.
-Rental workflows are documented in `docs/17-RENTAL-IMPLEMENTATION.md`.
+Rental controls rental state, Maintenance controls service restrictions and canonical
+telemetry supplies independent connectivity/fault readings. Transportation quotes
+are editable in drafts/quotes, frozen at reservation and retained historically.
+Finance shows their VAT-exclusive estimated margin separately from equipment earnings;
+supplier costs require their own permissions and unknown costs never become zero.
 
-Maintenance workflows, service restrictions, calendar plans and technical history exports are documented in `docs/18-MAINTENANCE-IMPLEMENTATION.md`.
-
-Automated browser verification uses `pnpm test:e2e` with disposable data and test personas.
-See [E2E testing](docs/19-E2E-TESTING.md) for setup, isolation, debugging and CI.
-
-The [telemetry foundation](docs/20-TELEMETRY-FOUNDATION.md) defines tenant-owned tracking devices and historical machine installations.
-
-Tenant settings, memberships, roles, invitations, branches and immutable audit reads are documented in [Tenant administration](docs/22-TENANT-ADMINISTRATION-IMPLEMENTATION.md). Open `/settings` with an authorized tenant membership.
-
-Operations, derived notifications, shared EN/TR navigation and scoped global search are documented in [Operations dashboard](docs/23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md). The authenticated operational landing page is `/dashboard`; `/notifications` contains personal in-app attention and preferences. Finance remains a separate operational-estimates area.
+No new business domain follows automatically. Real telemetry providers/production
+ingress, invitation email delivery, mobile feature development, remote commands,
+geofencing and statutory accounting remain explicitly deferred. Local/hosted tests
+do not establish those external capabilities.

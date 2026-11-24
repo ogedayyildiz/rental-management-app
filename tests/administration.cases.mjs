@@ -672,6 +672,7 @@ export async function administrationCases(suite, db, fixture, nest) {
           model: 'Model',
           category: 'Lift',
           acquisitionCost: '12345',
+          tax: { mode: 'EXCLUSIVE', rate: '0' },
           currency: 'TRY',
         });
         assert.equal(machine.status, 201);

@@ -116,6 +116,7 @@ export class SafeErrorFilter implements ExceptionFilter {
         ADMIN_LOCKOUT: 409,
         ROLE_IN_USE: 409,
         RENTAL_CONFLICT: 409,
+        RENTAL_FINANCIAL_REFERENCE: 409,
         MACHINE_INELIGIBLE: 409,
         MACHINE_ARCHIVED: 409,
         MACHINE_COMMITTED: 409,

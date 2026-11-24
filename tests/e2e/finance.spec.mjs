@@ -1,3 +1,4 @@
+import { expectCurrencyChoices } from './currency-helpers.mjs';
 import { test, expect, json } from './fixtures.mjs';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
@@ -29,16 +30,57 @@ async function workbook(download) {
   await book.xlsx.load(await readFile(await download.path()));
   return book;
 }
+async function expectDuration(root, label, value) {
+  await expect(
+    root
+      .getByText(label, { exact: true })
+      .locator('..')
+      .getByRole('definition'),
+  ).toHaveText(value);
+}
+function exportedDuration(book, header) {
+  const sheet = book.getWorksheet('Performance'),
+    rows = sheet.getSheetValues(),
+    column = sheet.getRow(1).values.indexOf(header),
+    row = rows.find((r) => r?.includes('FIN-KNOWN · Finance Analytics Lift'));
+  expect(column).toBeGreaterThan(0);
+  expect(row).toBeTruthy();
+  return row[column];
+}
 test('finance dashboard, exact totals, period slicing, rankings, currencies and export', async ({
   page,
   data,
 }, info) => {
   await page.goto('/finance');
   await january(page);
+  await expectCurrencyChoices(
+    page.getByRole('combobox', { name: 'Currency', exact: true }),
+  );
   const known = page.getByRole('row').filter({ hasText: 'FIN-KNOWN' });
   await expect(known).toContainText('600 TRY');
   await expect(known).toContainText('100 TRY');
   await expect(known).toContainText('500 TRY');
+  const duration = page.getByRole('combobox', {
+    name: 'Duration unit',
+    exact: true,
+  });
+  await expect(duration).toHaveValue('DAYS');
+  await expect(duration.getByRole('option')).toHaveText(['Hours', 'Days']);
+  await expectDuration(known, 'Rented time (Days)', '1');
+  await expectDuration(known, 'Observation time (Days)', '31');
+  await expectDuration(known, 'Reserved time (Days)', '0');
+  await expectDuration(known, 'Unrented time (Days)', '30');
+  await expectDuration(known, 'Average completed rental duration (Days)', '1');
+  await duration.selectOption('HOURS');
+  await expectDuration(known, 'Rented time (Hours)', '24');
+  await expectDuration(known, 'Observation time (Hours)', '744');
+  await expectDuration(known, 'Unrented time (Hours)', '720');
+  await expectDuration(
+    known,
+    'Average completed rental duration (Hours)',
+    '24',
+  );
+  await expect(known).toContainText('600 TRY');
   await known
     .getByText('Lifetime through report generation', { exact: true })
     .click();
@@ -56,6 +98,9 @@ test('finance dashboard, exact totals, period slicing, rankings, currencies and 
   await page
     .getByRole('combobox', { name: 'Rank by', exact: true })
     .selectOption('COMPLETED_VALUE');
+  await expectCurrencyChoices(
+    page.getByRole('combobox', { name: 'Ranking currency', exact: true }),
+  );
   await page
     .getByRole('combobox', { name: 'Ranking currency', exact: true })
     .selectOption('TRY');
@@ -79,6 +124,10 @@ test('finance dashboard, exact totals, period slicing, rankings, currencies and 
   );
   expect(response.headers()['content-type']).toContain('spreadsheetml');
   expect((await response.body()).length).toBeGreaterThan(2000);
+  const Excel = requireApi('exceljs'),
+    daysBook = new Excel.Workbook();
+  await daysBook.xlsx.load(await response.body());
+  expect(exportedDuration(daysBook, 'Rented time (Days)')).toBe(1);
   const pending = page.waitForEvent('download');
   await page
     .getByRole('link', { name: 'Download XLSX (current page)', exact: true })
@@ -86,6 +135,13 @@ test('finance dashboard, exact totals, period slicing, rankings, currencies and 
   const download = await pending;
   await download.saveAs(info.outputPath('finance-estimates.xlsx'));
   const book = await workbook(download);
+  expect(exportedDuration(book, 'Rented time (Hours)')).toBe(24);
+  expect(
+    book
+      .getWorksheet('ESTIMATE_V1')
+      .getSheetValues()
+      .some((row) => row?.includes('HOURS')),
+  ).toBe(true);
   expect(
     book
       .getWorksheet('Performance')
@@ -101,6 +157,19 @@ test('finance dashboard, exact totals, period slicing, rankings, currencies and 
     .getByRole('button', { name: 'Apply filters', exact: true })
     .click();
   await expect(known).toContainText('300 TRY');
+  await expectDuration(known, 'Rented time (Hours)', '12');
+  await duration.selectOption('DAYS');
+  await expectDuration(known, 'Rented time (Days)', '0.5');
+  await page
+    .getByRole('combobox', { name: 'Language', exact: true })
+    .selectOption('tr');
+  await expect(
+    page.getByRole('combobox', { name: 'Süre birimi', exact: true }),
+  ).toHaveValue('DAYS');
+  await expectDuration(known, 'Kiralanan süre (Gün)', '0,5');
+  await page
+    .getByRole('combobox', { name: 'Dil', exact: true })
+    .selectOption('en');
   await page.screenshot({
     path: info.outputPath('finance-dashboard.png'),
     fullPage: true,
@@ -132,6 +201,13 @@ test('customer grouping and Machine/Customer performance integration use the sam
   await expect(
     page.getByRole('link', { name: 'View full analysis', exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('combobox', { name: 'Duration unit', exact: true }),
+  ).toHaveValue('DAYS');
+  await page
+    .getByRole('combobox', { name: 'Duration unit', exact: true })
+    .selectOption('HOURS');
+  await expectDuration(page, 'Rented time (Hours)', '24');
   await page.goto('/customers');
   await page
     .getByLabel('Search name, identifier, contact, phone or email')
@@ -142,6 +218,15 @@ test('customer grouping and Machine/Customer performance integration use the sam
     .click();
   await expect(
     page.getByRole('heading', { name: 'Finance / Performance', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('combobox', { name: 'Duration unit', exact: true }),
+  ).toHaveValue('DAYS');
+  await page
+    .getByRole('combobox', { name: 'Duration unit', exact: true })
+    .selectOption('HOURS');
+  await expect(
+    page.getByText('Rented time (Hours)', { exact: true }),
   ).toBeVisible();
   await page
     .getByRole('link', { name: 'View full analysis', exact: true })

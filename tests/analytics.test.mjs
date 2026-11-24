@@ -7,6 +7,11 @@ import {
 import { calculateReport } from '../apps/api/dist/analytics/calculation.js';
 import { reportingPeriod } from '../apps/api/dist/analytics/period.js';
 import { analyticsQuerySchema } from '../packages/validation/dist/index.js';
+import {
+  analyticsDurationValue,
+  analyticsDurationLabel,
+  formatAnalyticsDuration,
+} from '../packages/i18n/dist/index.js';
 const hour = 3600000,
   day = 24 * hour,
   start = Date.parse('2026-01-01T00:00:00Z');
@@ -220,6 +225,62 @@ const machine = (id, cost = '1000') => ({
   serviceState: 'NORMAL',
   acquisitionCost: cost,
   currency: 'TRY',
+});
+test('analytics duration presentation uses elapsed hours/days with localized precision', () => {
+  assert.equal(analyticsDurationValue(5400, 'HOURS'), 1.5);
+  assert.equal(analyticsDurationValue(129600, 'DAYS'), 1.5);
+  assert.equal(formatAnalyticsDuration(129600, 'DAYS', 'en'), '1.5');
+  assert.equal(formatAnalyticsDuration(129600, 'DAYS', 'tr'), '1,5');
+  assert.equal(formatAnalyticsDuration(0, 'HOURS', 'en'), '0');
+  assert.equal(formatAnalyticsDuration(1, 'HOURS', 'en'), '<0.01');
+  assert.equal(formatAnalyticsDuration(1, 'DAYS', 'tr'), '<0,01');
+  for (const missing of [null, NaN, Infinity, -1]) {
+    assert.equal(analyticsDurationValue(missing, 'DAYS'), null);
+    assert.equal(formatAnalyticsDuration(missing, 'DAYS', 'en'), '—');
+  }
+  assert.equal(
+    analyticsDurationLabel('rentedSeconds', 'HOURS', 'en'),
+    'Rented time (Hours)',
+  );
+  assert.equal(
+    analyticsDurationLabel('rentedSeconds', 'DAYS', 'tr'),
+    'Kiralanan süre (Gün)',
+  );
+});
+test('duration display query accepts only hours/days and cannot change financial or utilization results', () => {
+  assert.equal(analyticsQuerySchema.parse({}).durationUnit, 'DAYS');
+  assert.equal(
+    analyticsQuerySchema.safeParse({ durationUnit: 'SECONDS' }).success,
+    false,
+  );
+  const data = {
+    machines: [machine('m')],
+    rentals: [
+      {
+        id: 'r',
+        number: 'r',
+        customerId: 'c',
+        customer: 'Client',
+        branchId: null,
+        status: 'COMPLETED',
+        items: [item()],
+      },
+    ],
+    workOrders: [],
+  };
+  const reports = ['DAYS', 'HOURS'].map((durationUnit) =>
+    calculateReport(
+      data,
+      analyticsQuerySchema.parse({ durationUnit }),
+      visibility,
+      [start, start + 2 * day],
+      new Date(start + 2 * day),
+      'Europe/Istanbul',
+    ),
+  );
+  assert.deepEqual(reports[0], reports[1]);
+  assert.equal(reports[0].summary.utilization.rentedSeconds, 86400);
+  assert.equal(reports[0].summary.values[0].estimatedCompletedValue, '100');
 });
 test('replacement attribution, six-decimal residual, period conservation and utilization union', () => {
   const i = item(start + day);

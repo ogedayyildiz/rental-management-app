@@ -1,6 +1,9 @@
 # Machine implementation
 
-Implemented in the existing modular monolith. Technical verification completed on 2026-10-19. This phase concerns physical/commercial rental assets only.
+Implemented in the existing modular monolith, initially verified on 2026-10-19 and
+subsequently integrated with Rental, Maintenance, Telemetry and Finance. This
+aggregate remains the physical/commercial rental asset. See the
+[current verification baseline](19-E2E-TESTING.md#current-verification-baseline).
 
 ## Aggregate and identifiers
 
@@ -10,15 +13,18 @@ Implemented in the existing modular monolith. Technical verification completed o
 
 Fleet numbers are required and unique within an organization, including sold/retired assets. Comparison uses trimmed Unicode NFKC uppercase keys while the display spelling is retained. A fleet number can be corrected through an audited update; the UUID remains the stable identity. Serial numbers are optional, searchable, nonunique manufacturer references: they are not assumed globally unique or used as authorization keys. Model year is an optional four-digit calendar year, not inferred from serial numbers.
 
-Ownership is optional: OWNED, LEASED, THIRD_PARTY. Unknown ownership stays null; leases/contracts and third-party settlement are not implemented.
+Ownership is optional: OWNED, LEASED, THIRD_PARTY. Unknown ownership stays null.
+Cash/open-account/leasing payment plans now exist separately in Operational Finance;
+ownership does not infer a financing agreement. Legal lease-document management and
+third-party fleet-owner settlement remain deferred.
 
 ## State dimensions
 
 - Rental: NOT_RENTED, RESERVED, RENTED. New machines start NOT_RENTED. Clients cannot write rental state; the Rental workflows now own its transactional projection. See [Rental implementation](17-RENTAL-IMPLEMENTATION.md).
-- Service: NORMAL, MAINTENANCE_DUE, MAINTENANCE_REQUIRED, OUT_OF_SERVICE, SERVICE_BLOCKED. Defaults to NORMAL; authorized Machine updates may explicitly change it, with a dedicated audit event. No maintenance scheduling, work orders or inferred repair completion exist yet.
+- Service: NORMAL, MAINTENANCE_DUE, MAINTENANCE_REQUIRED, OUT_OF_SERVICE, SERVICE_BLOCKED. New machines start NORMAL. Maintenance work orders and explicit block/release actions own the projection; generic Machine updates cannot change it. Completion releases only its own restriction and cannot silently clear other open restrictions.
 - Lifecycle: ACTIVE, SOLD, RETIRED. New assets start ACTIVE. The archive endpoint transitions ACTIVE to SOLD or RETIRED. It rejects reserved/rented machines and does not change rental/service state. Repeating the same archive is idempotent. Sold/retired machines remain readable and cannot be edited until explicitly restored through the audited restore action.
 
-There is no generic status or authoritative availability flag. NOT_RENTED is not a promise of availability. Connectivity and operational states are absent rather than fabricated. The specific Domain Model and ADR-007 terms are used; the rental document's illustrative DECOMMISSIONED wording is not introduced as a competing lifecycle value.
+There is no generic status or authoritative availability flag. NOT_RENTED is not a promise of availability. Connectivity and available activity readings come from the separate canonical Telemetry read model, not live columns on Machine; missing readings remain unknown. The specific Domain Model and ADR-007 terms are used; the rental document's illustrative DECOMMISSIONED wording is not introduced as a competing lifecycle value.
 
 ## Branch and tenant behavior
 
@@ -46,7 +52,7 @@ Acquisition date is a date-only value. Acquisition cost is a nonnegative decimal
 
 - machines.read: list, detail, branch choices.
 - machines.create: creation.
-- machines.update: operational/specification edits, branch changes and manual service state changes.
+- machines.update: operational/specification edits and branch changes; service changes require the Maintenance boundary and its permissions.
 - machines.archive: retirement/sale lifecycle transition.
 - finance.acquisition_cost.view: permits cost and currency in responses, in addition to the required Machine permission.
 - finance.acquisition_cost.edit: permits supplying/changing/clearing cost and currency, in addition to the required Machine mutation permission.
@@ -55,7 +61,11 @@ The project owner explicitly approved all six grants to existing TENANT_ADMINIST
 
 Without cost-view permission, both cost and currency keys are omitted from every response, including mutation responses. Operational patches preserve hidden values. Even explicitly supplying null money fields requires edit permission. The web cost editor requires both view and edit; the API allows deliberate blind writes by an edit-only principal without revealing values.
 
-No ROI, profitability, depreciation, financial entries, exchange rates or accounting integration are implemented. The two financial permissions protect asset acquisition data only.
+The two financial permissions protect asset acquisition data only. Separate Finance
+modules now calculate estimated contribution/acquisition recovery and record approved
+acquisition obligations/payments. Those modules enforce their own permissions and
+do not rewrite Machine acquisition data. Depreciation, exchange rates and statutory
+accounting integration remain deferred.
 
 ## Application and audit boundaries
 
@@ -91,7 +101,7 @@ For the real UM Kiralama user after applying migration and restarting the API/we
 2. Open `/machines`, select UM Kiralama, create a development asset with a unique fleet number, Galen/ES1012 and an electric scissor lift category. Use an existing authorized branch or Unassigned for ALL_BRANCHES.
 3. Enter known static dimensions and a decimal acquisition value with currency; leave unknown fields empty. Save, open details and reload.
 4. Search by fleet/serial/manufacturer; combine category, branch and state filters. Verify pagination as the directory grows.
-5. Edit notes/specifications and service state. Confirm rental state remains NOT_RENTED. Confirm acquisition values persist exactly.
+5. Edit notes/specifications; record service restrictions through Maintenance block/release actions. Confirm these actions do not change rental state and acquisition values persist exactly.
 6. Attempt a duplicate fleet number; expect conflict. Negative measurements and incomplete cost/currency pairs must be rejected.
 7. Retire the disposable test machine. It disappears from default ACTIVE results, remains under RETIRED/ALL, and is no longer editable.
 8. Confirm the platform-only operator receives no Machine organization access. Automated fixtures cover selected-branch and financial-permission denial without changing real membership grants.
@@ -104,7 +114,9 @@ The additive migration and seed were applied locally. All 65 automated tests,
 workspace lint, strict typechecks, formatting and full build passed. The full build
 includes Next.js and Expo iOS/Android exports. Both development administration
 templates have all six approved grants; the migration recorded 12 grant audit events.
-The real UM Kiralama Machine browser smoke test remains pending.
+These are the initial 2026-10-19 results. The owner subsequently reported successful
+real UM Kiralama Machine browser checks; the expanded automated suite covers Machine
+workflows through Playwright. See the current verification baseline linked above.
 
 Run `pnpm db:migrate`, `pnpm db:seed`, `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build`. The integration suite uses a fresh isolated local database and checks CRUD, all branch/tenant boundaries, cost field omission, audit rollback, identifiers, states, acquisition/specification validation, pagination and real Nest HTTP guards. Real tenant UI smoke testing is a separate manual step; no real Machine data is created by the automated tests.
 
@@ -133,8 +145,8 @@ including unallocated category/model capacity. Compatible edits are allowed;
 changes that invalidate a commitment roll back with MACHINE_COMMITMENT_CONFLICT.
 An exact-model booking still requires that identity; changing its commercial
 requirement is not inferred from editing the asset. Notes, identifiers and
-financial corrections keep existing permissions. Service-state updates remain
-possible so an actual breakdown can be recorded even during rental.
+financial corrections keep existing permissions. An actual breakdown can still be
+recorded during rental through Maintenance restrictions, not generic Machine edits.
 
 Machine updates/archive/restore share Rental's organization scheduling lock in a
 Serializable transaction. Concurrent reservation and incompatible asset changes
@@ -167,8 +179,21 @@ reservation and assignment reuse the same specification matching rules. See
 
 ## Maintenance ownership (2026-10-21)
 
-The Maintenance phase supersedes the temporary manual service-state editing described
-above. Machine create starts NORMAL; generic updates cannot change serviceState.
+The Maintenance phase replaced the original temporary manual service-state editing.
+Machine create starts NORMAL; generic updates cannot change serviceState.
 Existing non-NORMAL states are preserved as audited technical restrictions.
 Authorized block/release actions and work orders now own that projection. See
 [Maintenance implementation](18-MAINTENANCE-IMPLEMENTATION.md#service-state-ownership-and-restrictions).
+
+## VAT and acquisition payment plans
+
+New non-null acquisition costs require explicit VAT terms: included/excluded with
+a rate, or not applicable with a reason. Historical costs retain UNSPECIFIED VAT
+without changing their amounts. VAT fields follow acquisition-cost view/edit
+permissions. Generic metadata edits preserve existing unknown VAT.
+
+The Machine detail links to [operational Finance](24-FINANCE-OPERATIONS-IMPLEMENTATION.md)
+for cash/open-account/leasing obligations, deposits, installments and payments.
+Machine ownership type remains separate from the financing arrangement. A payment
+plan does not overwrite acquisition cost, change lifecycle state or add the purchase
+to analytics a second time. There is no automatic interest/depreciation calculation.

@@ -43,6 +43,9 @@ export async function machineCases(suite, db, fixture, h) {
     manufacturer: 'Galen',
     model: 'ES1012',
     category: 'Electric scissor lift',
+    ...(extra.acquisitionCost != null
+      ? { tax: { mode: 'EXCLUSIVE', rate: '0' } }
+      : {}),
     ...extra,
   });
   const create = (t, extra = {}) =>

@@ -1,3 +1,8 @@
+import { financeOperationsMessages } from './finance-operations.js';
+import { transportationMessages } from './transportation.js';
+export * from './analytics-duration.js';
+import { currencyMessages } from './currencies.js';
+export { selectableCurrencies, isSelectableCurrency } from './currencies.js';
 import { operationsMessages } from './operations.js';
 import { administrationMessages } from './administration.js';
 import { maintenanceMessages } from './maintenance.js';
@@ -8,6 +13,9 @@ import { machineMessages } from './machines.js';
 import { customerMessages } from './customers.js';
 export const messages = {
   en: {
+    ...transportationMessages.en,
+    ...financeOperationsMessages.en,
+    ...currencyMessages.en,
     ...operationsMessages.en,
     ...administrationMessages.en,
     ...analyticsMessages.en,
@@ -31,6 +39,9 @@ export const messages = {
       'The workspace is ready. Business features will be added in the next phase.',
   },
   tr: {
+    ...transportationMessages.tr,
+    ...financeOperationsMessages.tr,
+    ...currencyMessages.tr,
     ...operationsMessages.tr,
     ...administrationMessages.tr,
     ...analyticsMessages.tr,

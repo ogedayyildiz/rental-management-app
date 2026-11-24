@@ -46,8 +46,11 @@ test.describe('financial omission across real UI and bridge', () => {
       const detail = (
         await json(page, `organizations/${data.org.id}/rentals/${row.id}`)
       ).body;
-      for (const item of detail.items)
+      for (const item of detail.items) {
         expect(item).not.toHaveProperty('agreedRate');
+        expect(item).not.toHaveProperty('tax');
+        expect(item).not.toHaveProperty('terms');
+      }
     }
     await page
       .getByRole('button', { name: 'Create rental', exact: true })

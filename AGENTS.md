@@ -96,6 +96,8 @@ ADR-007-SEPARATE-MACHINE-STATE-DIMENSIONS.md
 ADR-008-PERMISSION-BASED-AUTHORIZATION.md
 ADR-009-REMOTE-COMMAND-SAFETY-MODEL.md
 ADR-010-POSTGRESQL-TIMESCALEDB.md
+ADR-011-OIDC-AUTHENTICATION-PROVIDER.md
+ADR-012-OPERATIONAL-RECEIVABLES-AND-PAYABLES.md
 ```
 
 ---
@@ -865,3 +867,16 @@ Before changing organization settings, memberships, roles, branches, invitations
 ## Operations and notification reads
 
 Before changing the operational home, derived attention, notification interactions or shared web navigation, read `docs/23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md`. Reuse source permissions and branch predicates; never persist duplicate business statuses or expose financial fields through an operations summary. Notification acknowledgement/dismissal must remain personal and cannot resolve source conditions.
+
+## VAT and operational finance
+
+Before changing VAT, acquisition payment plans, receivables or collections, read
+`docs/24-FINANCE-OPERATIONS-IMPLEMENTATION.md` and ADR-012. Preserve unspecified
+historical VAT; document absence cannot imply exemption. ESTIMATE_V1 never creates
+debt. Approval freezes obligations; settlements require idempotency, scope, audit
+and overpayment checks. Corrections reverse payment history rather than deleting it.
+
+Before changing rental transport quotes or transport margin reporting, also read
+`docs/25-RENTAL-TRANSPORTATION.md`. Keep supplier costs separately permissioned,
+preserve quote history, and keep estimated transport margin separate from machine
+earnings, receivables and payments.

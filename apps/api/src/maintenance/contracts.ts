@@ -1,3 +1,4 @@
+import type { Tax } from '@rental/validation';
 import type {
   WorkOrderInput,
   WorkOrderPatch,
@@ -113,6 +114,7 @@ export interface MaintenanceRepository {
       kind: 'LABOR' | 'PARTS' | 'EXTERNAL_SERVICE' | 'TRANSPORT' | 'OTHER';
       amount: string;
       currency: string;
+      tax: Tax;
       description: string | null;
     },
   ): Promise<void>;

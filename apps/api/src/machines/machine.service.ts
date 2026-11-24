@@ -42,9 +42,15 @@ export class MachineService {
   }
   private visible(c: TenantContext, row: MachineView): MachineView {
     if (c.permissions.includes('finance.acquisition_cost.view')) return row;
-    const { acquisitionCost: _cost, currency: _currency, ...visible } = row;
+    const {
+      acquisitionCost: _cost,
+      currency: _currency,
+      tax: _tax,
+      ...visible
+    } = row;
     void _cost;
     void _currency;
+    void _tax;
     return visible;
   }
   private async find(r: MachineRepositories, c: TenantContext, value: unknown) {
@@ -98,9 +104,15 @@ export class MachineService {
     return this.run(p, o, 'machines.create', async (r, c) => {
       // Inspect supplied fields before defaults so explicit null writes also require financial access.
       const supplied = parseInput(machinePatchSchema, body);
-      if ('acquisitionCost' in supplied || 'currency' in supplied)
+      if (
+        'acquisitionCost' in supplied ||
+        'currency' in supplied ||
+        'tax' in supplied
+      )
         requirePermission(c, 'finance.acquisition_cost.edit');
       const input = parseInput(machineCreateSchema, body);
+      if (input.acquisitionCost !== null && input.tax.mode === 'UNSPECIFIED')
+        throw new AccessError('INVALID_INPUT');
       if (input.serviceState !== 'NORMAL')
         throw new AccessError('INVALID_INPUT');
       await r.machines.requireBranch(c, input.branchId);
@@ -127,12 +139,20 @@ export class MachineService {
         patch.serviceState !== before.serviceState
       )
         throw new AccessError('INVALID_INPUT');
-      if ('acquisitionCost' in patch || 'currency' in patch)
+      if ('acquisitionCost' in patch || 'currency' in patch || 'tax' in patch)
         requirePermission(c, 'finance.acquisition_cost.edit');
       const input = parseInput(machineCreateSchema, {
         ...machineCreateSchema.strip().parse(before),
         ...patch,
       });
+      if (
+        input.acquisitionCost !== null &&
+        input.tax.mode === 'UNSPECIFIED' &&
+        (input.acquisitionCost !== before.acquisitionCost ||
+          input.currency !== before.currency ||
+          ('tax' in patch && before.tax?.mode !== 'UNSPECIFIED'))
+      )
+        throw new AccessError('INVALID_INPUT');
       await r.machines.requireBranch(c, input.branchId);
       const row = await r.machines.save(c, before.id, input);
       await r.commitments.validate(c, before, row);

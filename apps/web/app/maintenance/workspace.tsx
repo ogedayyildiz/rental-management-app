@@ -1,4 +1,6 @@
 'use client';
+import { TaxFields, TaxSummary, taxFormValue } from '../tax-fields';
+import { CurrencySelect } from '../currency-select';
 import { safeErrorKey } from '../../lib/ui-error';
 import { useAppLocale } from '../app-shell';
 import { accountResponse } from '../../lib/account';
@@ -602,7 +604,8 @@ export function MaintenanceWorkspace({
                     {row.costs.map((c) => (
                       <p key={c.id}>
                         {t(('maintenance.' + c.kind) as TranslationKey)} ·{' '}
-                        {c.amount} {c.currency}
+                        {c.amount} {c.currency} ·{' '}
+                        <TaxSummary tax={c.tax} locale={locale} />
                       </p>
                     ))}
                   </>
@@ -614,14 +617,15 @@ export function MaintenanceWorkspace({
                       onSubmit={(e) => {
                         e.preventDefault();
                         const f = new FormData(e.currentTarget);
+                        const tax = taxFormValue(f);
+                        for (const key of ['taxMode', 'taxRate', 'taxReason'])
+                          f.delete(key);
                         void run(async () =>
                           select(
-                            await api.action(
-                              org,
-                              row.id,
-                              'costs',
-                              Object.fromEntries(f),
-                            ),
+                            await api.action(org, row.id, 'costs', {
+                              ...Object.fromEntries(f),
+                              tax,
+                            }),
                           ),
                         );
                       }}
@@ -644,8 +648,13 @@ export function MaintenanceWorkspace({
                       </label>
                       <label>
                         {t('maintenance.currency')}
-                        <input name="currency" required pattern="[A-Z]{3}" />
+                        <CurrencySelect
+                          locale={locale}
+                          name="currency"
+                          required
+                        />
                       </label>
+                      <TaxFields locale={locale} required />
                       <button>{t('customers.save')}</button>
                     </form>
                   )}

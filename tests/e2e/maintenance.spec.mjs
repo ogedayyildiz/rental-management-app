@@ -1,3 +1,4 @@
+import { expectCurrencyChoices } from './currency-helpers.mjs';
 import { test, expect, json } from './fixtures.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -68,7 +69,16 @@ test('work order schedule/start/complete, costs, history and meaningful exports'
     .locator('form')
     .filter({ has: page.getByLabel('Amount', { exact: true }) });
   await costs.getByLabel('Amount', { exact: true }).fill('78901.123456');
-  await costs.getByLabel('Currency code (TRY, EUR…)').fill('TRY');
+  const currency = costs.getByRole('combobox', {
+    name: 'Currency',
+    exact: true,
+  });
+  await expectCurrencyChoices(currency);
+  await currency.selectOption({ label: 'TL' });
+  await costs
+    .getByRole('combobox', { name: 'VAT treatment', exact: true })
+    .selectOption('EXCLUSIVE');
+  await costs.getByLabel('VAT rate (%)', { exact: true }).fill('0');
   await costs.getByRole('button', { name: 'Save', exact: true }).click();
   await page
     .getByLabel('Completion notes / cancellation reason')

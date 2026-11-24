@@ -1,4 +1,6 @@
 'use client';
+import { TaxSummary } from '../tax-fields';
+import { TransportDetails } from './transportation';
 import { useState } from 'react';
 import { createRentalClient } from '@rental/api-client';
 import type { RentalAction } from '@rental/api-client';
@@ -243,6 +245,22 @@ export function RentalDetail({
         {row.status === 'ACTIVE' && (
           <p role="status">{t('ops.returnBeforeComplete')}</p>
         )}
+        <section aria-label={t('transport.title')}>
+          <h3>{t('transport.title')}</h3>
+          <TransportDetails quote={row.transportation} locale={locale} />
+          {row.transportation && <p>{t('transport.estimateHint')}</p>}
+          {row.transportationHistory.length > 0 && (
+            <details>
+              <summary>{t('transport.history')}</summary>
+              {row.transportationHistory.map((q) => (
+                <article key={q.id}>
+                  <p>{date(q.createdAt)}</p>
+                  <TransportDetails quote={q} locale={locale} />
+                </article>
+              ))}
+            </details>
+          )}
+        </section>
         <h3>{t('rentals.items')}</h3>
         {items.map((item, n) => (
           <section className="rental-panel" key={item.id}>
@@ -269,6 +287,7 @@ export function RentalDetail({
             )}
             {item.agreedRate !== undefined && (
               <p>
+                <TaxSummary tax={item.tax} locale={locale} /> ·{' '}
                 {item.agreedRate} {item.currency} /{' '}
                 {item.rateUnit ? t(`rentals.${item.rateUnit}`) : '—'}{' '}
                 {item.commercialNotes}
@@ -398,6 +417,7 @@ export function RentalDetail({
                 {item.terms.map((term) => (
                   <p key={term.id}>
                     {date(term.plannedStartAt)} — {date(term.plannedEndAt)}:{' '}
+                    <TaxSummary tax={term.tax} locale={locale} /> ·{' '}
                     {term.agreedRate} {term.currency} /{' '}
                     {t(`rentals.${term.rateUnit}`)}
                   </p>
@@ -407,6 +427,13 @@ export function RentalDetail({
           </section>
         ))}
       </fieldset>
+      {can('finance.receivables.view') && can('customers.read') && (
+        <a
+          href={`/finance/records?organizationId=${row.organizationId}&kind=RECEIVABLE&customerId=${row.customerId}&rentalId=${row.id}`}
+        >
+          {t('cash.openCustomer')}
+        </a>
+      )}
       <h3>{t('rentals.timeline')}</h3>
       <p>
         {t('rentals.created')}: {date(row.createdAt)} · {t('rentals.updated')}:{' '}

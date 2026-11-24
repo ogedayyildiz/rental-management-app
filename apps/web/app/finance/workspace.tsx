@@ -1,4 +1,7 @@
 'use client';
+import { CurrencySelect } from '../currency-select';
+import { TransportSummary } from './transportation';
+import { isSelectableCurrency, type AnalyticsDurationUnit } from '@rental/i18n';
 import { useAppLocale } from '../app-shell';
 import { accountResponse } from '../../lib/account';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,7 +14,7 @@ import {
   type AnalyticsReport,
   type AnalyticsQuery,
 } from '@rental/validation';
-import { MoneyValues, Performance, Trend } from './views';
+import { MoneyValues, Performance, Trend, DurationUnitSelect } from './views';
 type Org = { id: string; name: string; permissions: string[] };
 export function FinanceWorkspace({
   initialOrg,
@@ -30,6 +33,7 @@ export function FinanceWorkspace({
     [report, R] = useState<AnalyticsReport | null>(null),
     [busy, B] = useState(true);
   const [preset, P] = useState<AnalyticsQuery['preset']>('THIS_MONTH'),
+    [durationUnit, setDurationUnit] = useState<AnalyticsDurationUnit>('DAYS'),
     [group, G] = useState<AnalyticsQuery['group']>(
       initialCustomer ? 'customer' : 'machine',
     ),
@@ -113,9 +117,11 @@ export function FinanceWorkspace({
         if (live) {
           R(r);
           Currency((current) =>
+            isSelectableCurrency(current) &&
             r.summary.values.some((v) => v.currency === current)
               ? current
-              : (r.summary.values[0]?.currency ?? ''),
+              : (r.summary.values.find((v) => isSelectableCurrency(v.currency))
+                  ?.currency ?? ''),
           );
         }
       })
@@ -189,6 +195,12 @@ export function FinanceWorkspace({
     <main className="finance-page">
       <header>
         <h1>{t('finance.title')}</h1>
+        {(can('finance.receivables.view') || can('finance.payables.view')) && (
+          <Link href={`/finance/records?organizationId=${org}`}>
+            {t('cash.title')}
+          </Link>
+        )}
+        <p>{t('cash.estimateHint')}</p>
       </header>
       <p className="finance-notice">{t('finance.notice')}</p>
       {loaded && !org && <p>{t('finance.noAccess')}</p>}
@@ -330,6 +342,11 @@ export function FinanceWorkspace({
               </select>
             </label>
             <button disabled={busy}>{t('finance.apply')}</button>
+            <DurationUnitSelect
+              value={durationUnit}
+              onChange={setDurationUnit}
+              locale={locale}
+            />
             <label>
               {t('finance.sort')}
               <select
@@ -357,18 +374,12 @@ export function FinanceWorkspace({
             {sort === 'COMPLETED_VALUE' && (
               <label>
                 {t('finance.sortCurrency')}
-                <select
+                <CurrencySelect
+                  locale={locale}
                   value={sortCurrency}
                   required
                   onChange={(e) => SortCurrency(e.target.value)}
-                >
-                  <option value="">{t('finance.currency')}</option>
-                  {report?.summary.values.map((v) => (
-                    <option key={v.currency} value={v.currency}>
-                      {v.currency}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
             )}
             {(machineId || customerId) && (
@@ -397,11 +408,16 @@ export function FinanceWorkspace({
             {report.timezone})
           </p>
           <p>{t('finance.periodNote')}</p>
+          <p>{t('finance.durationHint')}</p>
           {report.visibility.export && (
             <a
               href={client.exportUrl(
                 org,
-                new URLSearchParams({ ...Object.fromEntries(query), locale }),
+                new URLSearchParams({
+                  ...Object.fromEntries(query),
+                  locale,
+                  durationUnit,
+                }),
               )}
             >
               {t('finance.export')}
@@ -428,11 +444,19 @@ export function FinanceWorkspace({
             <article className="finance-card">
               <Performance
                 row={report.summary}
+                durationUnit={durationUnit}
                 locale={locale}
                 timezone={report.timezone}
               />
             </article>
           </section>
+          {report.transportation !== undefined && (
+            <TransportSummary
+              rows={report.transportation}
+              locale={locale}
+              visibility={report.visibility}
+            />
+          )}
           {report.unavailableEstimates !== undefined &&
             report.unavailableEstimates > 0 && (
               <p>
@@ -449,17 +473,12 @@ export function FinanceWorkspace({
           {report.visibility.pricing && (
             <label>
               {t('finance.currency')}
-              <select
+              <CurrencySelect
+                locale={locale}
+                emptyLabel={t('finance.utilization')}
                 value={currency}
                 onChange={(e) => Currency(e.target.value)}
-              >
-                <option value="">{t('finance.utilization')}</option>
-                {report.summary.values.map((v) => (
-                  <option key={v.currency} value={v.currency}>
-                    {v.currency}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           )}
           <Trend
@@ -494,6 +513,7 @@ export function FinanceWorkspace({
                     <td>
                       <Performance
                         row={row}
+                        durationUnit={durationUnit}
                         locale={locale}
                         timezone={report.timezone}
                       />

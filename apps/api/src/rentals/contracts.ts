@@ -1,3 +1,4 @@
+import type { Tax } from '@rental/validation';
 import type {
   RentalView,
   RentalItemInput,
@@ -80,6 +81,7 @@ export interface RentalRepository {
       agreedRate: string;
       rateUnit: RentalRateUnit;
       currency: string;
+      tax: Tax;
     },
   ): Promise<void>;
   refreshDates(c: TenantContext, id: string): Promise<void>;

@@ -31,6 +31,7 @@ test('rental workflow: partial return leaves remaining machine rented and explai
         plannedEndAt: end,
         agreedRate: '100',
         currency: 'TRY',
+        tax: { mode: 'EXCLUSIVE', rate: '0' },
         rateUnit: 'DAILY',
       },
     ],

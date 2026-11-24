@@ -44,6 +44,8 @@ export class AnalyticsService {
         throw new AccessError('ACCESS_DENIED');
       const customerScope = q.group === 'customer' || !!q.customerId;
       const v: FinanceVisibility = {
+        transportCosts:
+          has('rentals.read') && has('rentals.transport_costs.view'),
         acquisition: has('finance.acquisition_cost.view') && !customerScope,
         pricing: has('rentals.read') && has('rentals.pricing.view'),
         costs:

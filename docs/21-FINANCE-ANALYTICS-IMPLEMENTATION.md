@@ -1,5 +1,18 @@
 # Finance / Analytics Phase 1
 
+[Transportation quotes](25-RENTAL-TRANSPORTATION.md) add a separate VAT-exclusive
+estimated transport margin by currency and Rental stage. These fixed rental-level
+quotes are excluded from equipment rental value, contribution and acquisition
+recovery. Their VAT-normalized comparison does not change ESTIMATE_V1 below.
+
+Subsequent operational finance adds explicit VAT terms, approved obligations and
+settlements; see [Phase 2](24-FINANCE-OPERATIONS-IMPLEMENTATION.md) and
+[ADR-012](decisions/ADR-012-OPERATIONAL-RECEIVABLES-AND-PAYABLES.md). Phase 1 analytics
+remain original entered-amount estimates, not VAT-normalized net accounting
+results. Payment plans and collections do not feed back into ESTIMATE_V1 or count
+again as acquisition/maintenance cost. Do not interpret mixed or unspecified VAT
+bases as net revenue, profit or tax reconciliation.
+
 Read-only analytics in the NestJS modular monolith. The owner approved ESTIMATE_V1
 on 2026-11-18. Existing Rental, Machine and Maintenance records remain authoritative;
 calculated values are not stored back into those domains. Hosted verification of
@@ -138,6 +151,30 @@ boundaries: this month, previous month, year to date, current and preceding elev
 months through now. Custom offset timestamps allow at most 366 elapsed days. UI custom
 inputs are labelled UTC; period display uses tenant timezone.
 
+### Duration display units
+
+Finance presents durations in **Days** by default, with an **Hours / Days** selector
+(**Saat / Gün** in Turkish). Switching immediately converts rented, reserved,
+unrented, observation and average completed rental durations in the summary and
+detail results. Machine/Customer performance panels use the same selector and
+formatter. Unit selection is local to the mounted view and survives report-filter
+and pagination changes; opening a new view starts in Days.
+
+One hour is 3,600 elapsed seconds; one day is 86,400 elapsed seconds (24 hours),
+not a tenant-local calendar-day count or rounded billing unit. UI numbers use
+EN/TR decimal formatting with at most two fractional digits. A positive duration
+below 0.01 selected units displays `<0.01` / `<0,01`; missing averages stay `—`.
+Zero remains zero. Counts, utilization percentages, money, ESTIMATE_V1 rounding
+and canonical machine operating-hours signals do not change with this selector.
+
+The read API keeps its precise `*Seconds` fields for compatibility. The optional
+validated `durationUnit=HOURS|DAYS` query setting is presentation metadata for XLSX
+(default DAYS); it cannot alter filtering, ranking, authorization or calculations.
+Downloads follow the currently selected unit and language, including explicit
+unit-bearing duration headers and workbook metadata. Duration cells remain numeric,
+using the shared presentation conversion without UI rounding; money stays in its
+existing exact representation. No database migration is needed.
+
 ## APIs, permissions and isolation
 
 `AnalyticsService` requires live trusted tenant context, `finance.analytics.view` and
@@ -171,7 +208,8 @@ model and category dimensions reflect current attributes, not historical snapsho
 `GET /organizations/:organizationId/finance` and `/finance/export` accept:
 `preset`, `from`, `to`, `machineId`, `customerId`, `branchId`, `modelId`, `categoryId`,
 `status`, `group` (machine/customer/model/category/branch), `sort`, `sortCurrency`,
-`cursor`, `limit` (1–100, default 25), `locale` (en/tr).
+`cursor`, `limit` (1–100, default 25), `locale` (en/tr),
+`durationUnit` (HOURS/DAYS, default DAYS; XLSX presentation only).
 
 Sorts: stable ID, descending completed estimate in one explicit currency, utilization,
 or unrented time, with stable ID ties and cursor continuation. Summary/trends cover
@@ -197,6 +235,10 @@ without telemetry. Provider fields, real hardware and telemetry writes are exclu
 
 ## Verification
 
+The dated results below are milestone records. The [current workspace verification](19-E2E-TESTING.md#current-verification-baseline)
+includes operational finance, Hours/Days display and transportation coverage; hosted
+evidence is recorded there separately from local execution.
+
 Local verification on 2026-11-18: 138 unit/integration/security tests and all 25
 Playwright scenarios passed without skips. The final Finance UI changes also passed
 the focused seven-scenario run (six Finance cases plus the existing no-finance
@@ -209,6 +251,15 @@ extensions, fixed/manual, replacements/allocation, costs, zero/unknown acquisiti
 currencies, utilization, recovery, paging/ranking and API/export permission denial.
 Playwright uses isolated personas and January 2026 service-generated examples for
 dashboard, period filters, machine/customer panels, exports and negative access.
+
+Duration-display regression coverage exercises Days/Hours switching in the real
+Finance and Machine/Customer panels, fractional durations, EN/TR formatting and
+unit-bearing numeric XLSX exports. Unit tests cover zero/missing/tiny durations,
+query validation and unchanged precise analytics/financial results across units.
+
+Duration display verified on 2026-11-24: all 183 unit/integration tests and all 53
+Playwright scenarios passed, including the updated Finance browser/export cases.
+Lint, strict TypeScript, formatting and the full workspace build also passed.
 
 Run `pnpm db:migrate`, `pnpm db:seed`, `pnpm test`, `pnpm test:e2e`, `pnpm lint`,
 `pnpm typecheck`, `pnpm format:check`, `pnpm build`. Development data is never reset.

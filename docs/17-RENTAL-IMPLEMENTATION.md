@@ -1,5 +1,10 @@
 # Rental / reservation / contract implementation
 
+Transportation quote support now implements the previously deferred RentalCharge
+boundary. See [Transportation implementation](25-RENTAL-TRANSPORTATION.md) for
+combined transport pricing, supplier-cost permissions, VAT, history and Finance
+estimates. This adds no dispatch logistics or changes to the Rental state machine.
+
 Implemented inside the existing modular monolith. This phase implements operational contracts and scheduling, not legal document generation or invoicing. See [Rental Business Rules](07-RENTAL-BUSINESS-RULES.md), [Domain Model](03-DOMAIN-MODEL.md), [Authorization](05-AUTH-AND-PERMISSIONS.md), [Customers](15-CUSTOMER-IMPLEMENTATION.md), [Machines](16-MACHINE-IMPLEMENTATION.md), ADR-001, ADR-007 and ADR-008.
 
 ## Aggregate and identifiers
@@ -56,11 +61,12 @@ Customers remain organization-wide under the existing Customer rules. The UI's c
 
 ## Pricing and permissions
 
-Rates are decimal strings over HTTP and NUMERIC(30,6) in PostgreSQL. No JavaScript Number money arithmetic, duration rounding, FX conversion or totals are implemented. Currency is explicitly supplied, not inferred from language. Units: HOURLY, DAILY, WEEKLY, MONTHLY, FIXED_PERIOD and MANUAL. A unit records the agreement; it does not imply an invoicing formula. Extension segments may store revised terms without rewriting original pricing.
+Rates are decimal strings over HTTP and NUMERIC(30,6) in PostgreSQL. Rental stores agreed terms; it does not use JavaScript Number money arithmetic or calculate invoices/FX conversion. Duration rounding and estimated values belong to the approved Finance ESTIMATE_V1 read policy, not authoritative Rental billing fields. Currency is explicitly supplied, not inferred from language. Units: HOURLY, DAILY, WEEKLY, MONTHLY, FIXED_PERIOD and MANUAL. A unit records the agreement; it does not imply an invoicing formula. Extension segments may store revised terms without rewriting original pricing.
 
-Create/Edit Rental uses a currency dropdown with canonical codes and localized
-currency names. Turkish lira is submitted as TRY, not TL. The browser supplies
-its supported currency choices and preserves an existing code when editing.
+Create/Edit Rental uses the shared currency dropdown with exactly three selectable
+currencies: TL, USD and EUR. Turkish lira is submitted as TRY, not TL. The same
+choices apply in English and Turkish; browser-supported currencies do not expand
+this list. An older record's existing currency is preserved on unrelated edits.
 Changing language or currency never converts or recalculates the agreed amount.
 
 | Permission | Operations |
@@ -129,11 +135,26 @@ After restarting API/web with `pnpm dev`, sign in as the real UM Kiralama tenant
 9. Return the remaining units and complete. Confirm independent service states remain unchanged and machines become NOT_RENTED or RESERVED if another valid reservation exists. Completed rental stays readable and cannot dispatch again.
 10. Confirm filters/cursors and direct detail links work. Repeating workflow actions must not create duplicate assignments/audits. Inspect audit records through approved tooling without tokens/credentials.
 
-Automated tests use a fresh local test database and local verifier boundary; no live Auth0 service or real tenant rentals are needed. Real UM Kiralama Rental smoke testing remains a manual follow-up; the implementation does not create business rentals in that tenant automatically.
+Automated tests use a fresh local test database and local verifier boundary; no live Auth0 service or real tenant rentals are needed. The owner has reported successful UM Kiralama browser verification. Routine regressions now use Playwright, including reserve/conflict/dispatch/extend/partial-return/completion/cancellation and transportation. The manual checklist remains available for separate live Auth0 checks; automation does not create business rentals in UM Kiralama. See the [current verification baseline](19-E2E-TESTING.md#current-verification-baseline).
 
 ## Boundaries and deferred scope
 
-No new architecture/ADR is needed: this follows the documented aggregate and existing modular monolith. Acquisition data remains owned by Machines. Rental stores agreement prices only. No invoices, taxes, discounts engine, payments, accounting, revenue recognition, ROI or profitability calculations are added. No maintenance schedules/work orders, automatic return inspection, dispatch logistics/transfer subsystem, transport charges, document/PDF generation or notification system is introduced. Manual existing service states remain authoritative for service eligibility. No GPS, CAN, device/provider integration, connectivity or remote commands exist here. Full mobile Rental UI is deferred; shared contracts support later consumption.
+Rental remains inside the modular monolith and owns agreement terms, assignment
+history and rental state. Acquisition belongs to Machines; service restrictions
+and planned workshop periods belong to Maintenance. Canonical telemetry is separate
+and cannot start/end a legal rental or change scheduling eligibility by connectivity.
+
+Subsequent phases added VAT snapshots, [transportation quotes](25-RENTAL-TRANSPORTATION.md),
+[Finance estimates](21-FINANCE-ANALYTICS-IMPLEMENTATION.md), separately approved
+[receivables/collections](24-FINANCE-OPERATIONS-IMPLEMENTATION.md), and
+[derived operational notifications](23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md).
+These do not replace Rental workflow or convert estimates into debt. Transportation
+has no dispatch/logistics workflow and is not equipment rental revenue.
+
+Invoice issuance, statutory accounting, a discount/tax-determination engine, legal
+contract PDF generation, automatic return inspections, cross-branch logistics,
+remote commands and full mobile Rental UI remain deferred. Historical verification
+notes below describe their dated milestones, not the current platform's limits.
 
 ## Technical verification
 
@@ -259,3 +280,17 @@ The approved [ESTIMATE_V1 Finance policy](21-FINANCE-ANALYTICS-IMPLEMENTATION.md
 now derives explicitly labelled operational estimates from agreed Rental terms,
 actual dates and preserved assignments. Rental continues to own source terms and
 workflow; it stores no calculated analytics or authoritative invoice totals.
+
+## VAT terms and collections
+
+New priced items require explicit VAT included/excluded terms with a rate, or
+not-applicable terms with a reason. Immutable RentalItemTerm revisions retain their
+VAT snapshot. Historical terms remain UNSPECIFIED without repricing. VAT is returned
+only with rental-pricing permission. New extensions retain known VAT unless explicitly
+changed; unknown historical prices require a VAT decision when commercial terms change.
+
+Rental detail links to [operational Finance](24-FINANCE-OPERATIONS-IMPLEMENTATION.md)
+for an explicitly entered and approved receivable and partial collections. Linking
+requires the same tenant/customer and pricing-read permission. ESTIMATE_V1 never
+creates debt automatically. Returning/completing a Rental neither collects money
+nor clears a customer balance; an optional invoice reference is not invoice issuance.

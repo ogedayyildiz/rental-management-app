@@ -17,6 +17,8 @@ export function immediateCapacity(
     const at = now.toISOString(),
       end = new Date(now.getTime() + 1).toISOString();
     const demand: RentalView = {
+      transportation: null,
+      transportationHistory: [],
       id: `capacity-${m.id}`,
       organizationId: '',
       number: '',

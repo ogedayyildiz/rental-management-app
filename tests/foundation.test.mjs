@@ -1,3 +1,4 @@
+import { financeOperationsCases } from './finance-operations.cases.mjs';
 import { operationsCases } from './operations.cases.mjs';
 import { administrationCases } from './administration.cases.mjs';
 import { deviceCases } from './devices.cases.mjs';
@@ -60,7 +61,7 @@ class TestVerifier extends IdentityVerifier {
 
 test(
   'database, tenant, authorization and audit foundation',
-  { timeout: 120000 },
+  { timeout: 180000 },
   async (suite) => {
     assert.ok(
       process.env.DATABASE_URL,
@@ -776,6 +777,7 @@ test(
         IdentityVerifier,
         TestVerifier,
       });
+      await financeOperationsCases(suite, db, fixture);
       await operationsCases(suite, db, fixture, {
         Test,
         FoundationModule,

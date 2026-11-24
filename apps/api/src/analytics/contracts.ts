@@ -1,4 +1,4 @@
-import type { AnalyticsQuery } from '@rental/validation';
+import type { AnalyticsQuery, RentalTransportView } from '@rental/validation';
 import type { TenantContext } from '../access/access.service.js';
 import type { AccessRepository } from '../access/contracts.js';
 
@@ -46,6 +46,9 @@ export interface FinanceItem {
   assignments: FinanceAssignment[];
 }
 export interface FinanceRental {
+  createdAt?: string;
+  plannedStartAt?: string | null;
+  transportation?: RentalTransportView | null;
   id: string;
   number: string;
   customerId: string;
@@ -67,6 +70,7 @@ export interface FinanceSnapshot {
   workOrders: FinanceWorkOrder[];
 }
 export interface FinanceVisibility {
+  transportCosts?: boolean;
   acquisition: boolean;
   pricing: boolean;
   costs: boolean;

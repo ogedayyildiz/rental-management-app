@@ -105,6 +105,16 @@ export const administrationMessages = {
     'admin.template': 'Template origin',
     'admin.permission.audit.read': 'Audit — Read',
     'admin.permission.finance.analytics.view': 'Finance analytics — View',
+    'admin.permission.finance.receivables.view': 'Customer receivables — View',
+    'admin.permission.finance.receivables.manage':
+      'Customer receivables — Manage and approve',
+    'admin.permission.finance.payables.view': 'Acquisition payments — View',
+    'admin.permission.finance.payables.manage':
+      'Acquisition payments — Manage and approve',
+    'admin.permission.finance.payments.record':
+      'Payments and collections — Record',
+    'admin.permission.finance.payments.reverse':
+      'Payments and collections — Reverse',
     'admin.permission.finance.analytics.export': 'Finance analytics — Export',
     'admin.permission.device.read': 'Devices — Read',
     'admin.permission.device.manage': 'Devices — Manage',
@@ -258,6 +268,17 @@ export const administrationMessages = {
     'admin.template': 'Şablon kaynağı',
     'admin.permission.audit.read': 'Denetim — Görüntüle',
     'admin.permission.finance.analytics.view': 'Finans analitiği — Görüntüle',
+    'admin.permission.finance.receivables.view':
+      'Müşteri alacakları — Görüntüle',
+    'admin.permission.finance.receivables.manage':
+      'Müşteri alacakları — Yönet ve onayla',
+    'admin.permission.finance.payables.view':
+      'Satın alma ödemeleri — Görüntüle',
+    'admin.permission.finance.payables.manage':
+      'Satın alma ödemeleri — Yönet ve onayla',
+    'admin.permission.finance.payments.record': 'Ödeme ve tahsilatlar — Kaydet',
+    'admin.permission.finance.payments.reverse':
+      'Ödeme ve tahsilatlar — Geri al',
     'admin.permission.finance.analytics.export':
       'Finans analitiği — Dışa aktar',
     'admin.permission.device.read': 'Cihazlar — Görüntüle',

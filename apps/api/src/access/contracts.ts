@@ -51,6 +51,7 @@ export class AccessError extends Error {
       | 'NOT_FOUND'
       | 'INVALID_INPUT'
       | 'RENTAL_CONFLICT'
+      | 'RENTAL_FINANCIAL_REFERENCE'
       | 'MACHINE_INELIGIBLE'
       | 'MACHINE_ARCHIVED'
       | 'MACHINE_COMMITTED'

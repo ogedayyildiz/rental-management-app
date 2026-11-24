@@ -1,10 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { translate, type Locale } from '@rental/i18n';
+import {
+  translate,
+  type AnalyticsDurationUnit,
+  type Locale,
+} from '@rental/i18n';
 import { createAnalyticsClient } from '@rental/api-client';
 import type { AnalyticsRow } from '@rental/validation';
-import { Performance } from './views';
+import { Performance, DurationUnitSelect } from './views';
 type PanelProps = {
   org: string;
   id: string;
@@ -16,6 +20,7 @@ export function FinancePanel(props: PanelProps) {
 }
 function LoadedPanel({ org, id, kind, locale }: PanelProps) {
   const [row, setRow] = useState<AnalyticsRow | null>(null),
+    [durationUnit, setDurationUnit] = useState<AnalyticsDurationUnit>('DAYS'),
     [error, setError] = useState(false),
     [timezone, setTimezone] = useState('UTC'),
     [loaded, setLoaded] = useState(false);
@@ -49,7 +54,20 @@ function LoadedPanel({ org, id, kind, locale }: PanelProps) {
       {error ? (
         <p role="alert">{translate(locale, 'finance.error')}</p>
       ) : row ? (
-        <Performance row={row} locale={locale} timezone={timezone} />
+        <>
+          <p>{translate(locale, 'finance.durationHint')}</p>
+          <DurationUnitSelect
+            value={durationUnit}
+            onChange={setDurationUnit}
+            locale={locale}
+          />
+          <Performance
+            row={row}
+            locale={locale}
+            timezone={timezone}
+            durationUnit={durationUnit}
+          />
+        </>
       ) : loaded ? (
         <p>{translate(locale, 'finance.empty')}</p>
       ) : (

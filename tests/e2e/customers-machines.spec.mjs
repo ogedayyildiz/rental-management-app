@@ -1,4 +1,5 @@
-import { test, expect } from './fixtures.mjs';
+import { expectCurrencyChoices } from './currency-helpers.mjs';
+import { test, expect, json } from './fixtures.mjs';
 test('customer create, search, edit and archive through forms', async ({
   page,
 }) => {
@@ -44,13 +45,46 @@ test('machine create, search, edit and retire through forms', async ({
   await page
     .getByRole('combobox', { name: 'Branch', exact: true })
     .selectOption(data.north.id);
+  const currency = page.getByRole('combobox', {
+    name: 'Currency',
+    exact: true,
+  });
+  await expectCurrencyChoices(currency);
+  await page.getByLabel('Acquisition cost', { exact: true }).fill('1234.56');
+  await currency.selectOption('USD');
+  await page
+    .getByRole('combobox', { name: 'VAT treatment', exact: true })
+    .selectOption('EXCLUSIVE');
+  await page.getByLabel('VAT rate (%)', { exact: true }).fill('0');
   await page.getByRole('button', { name: 'Save machine', exact: true }).click();
   await page.getByRole('button', { name: 'Edit machine', exact: true }).click();
+  await expect(currency).toHaveValue('USD');
+  await expect(
+    page.getByLabel('Acquisition cost', { exact: true }),
+  ).toHaveValue('1234.56');
+  await currency.selectOption('EUR');
+  await page
+    .getByRole('combobox', { name: 'Language', exact: true })
+    .selectOption('tr');
+  const turkishCurrency = page.getByRole('combobox', {
+    name: 'Para birimi',
+    exact: true,
+  });
+  await expectCurrencyChoices(turkishCurrency);
+  await expect(turkishCurrency).toHaveValue('EUR');
+  await page
+    .getByRole('combobox', { name: 'Dil', exact: true })
+    .selectOption('en');
   await page.getByLabel('Model *', { exact: true }).fill('Model Corrected');
   await page.getByRole('button', { name: 'Save machine', exact: true }).click();
   await expect(
     page.getByText('Model Corrected', { exact: false }).first(),
   ).toBeVisible();
+  const persisted = (
+    await json(page, `organizations/${data.org.id}/machines?q=E2E-BROWSER`)
+  ).body.items.find((m) => m.fleetNumber === 'E2E-BROWSER');
+  expect(persisted.currency).toBe('EUR');
+  expect(persisted.acquisitionCost).toBe('1234.56');
   await page.getByRole('link', { name: 'Machine list' }).click();
   await page
     .getByLabel('Search fleet, manufacturer, model or serial number', {

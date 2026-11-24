@@ -186,17 +186,29 @@ export function AppShell({ children }: { children: ReactNode }) {
           <>
             <nav aria-label={t('navigation')} className="app-nav">
               {destinations
-                .filter(
-                  ([, path, p]) =>
-                    !p ||
-                    (permissions.includes(p) &&
-                      (path !== '/finance' ||
-                        permissions.includes('machines.read'))),
+                .filter(([, path, p]) =>
+                  path === '/finance'
+                    ? (permissions.includes('finance.analytics.view') &&
+                        permissions.includes('machines.read')) ||
+                      (permissions.includes('finance.receivables.view') &&
+                        permissions.includes('customers.read')) ||
+                      (permissions.includes('finance.payables.view') &&
+                        permissions.includes('machines.read') &&
+                        permissions.includes('finance.acquisition_cost.view'))
+                    : !p || permissions.includes(p),
                 )
                 .map(([key, path]) => (
                   <Link
                     key={path}
-                    href={href(path)}
+                    href={href(
+                      path === '/finance' &&
+                        !(
+                          permissions.includes('finance.analytics.view') &&
+                          permissions.includes('machines.read')
+                        )
+                        ? '/finance/records'
+                        : path,
+                    )}
                     aria-current={
                       pathname === path || pathname.startsWith(path + '/')
                         ? 'page'

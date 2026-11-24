@@ -1,3 +1,5 @@
+import { readTax, taxColumns } from '../finance/tax.js';
+import type { Tax } from '@rental/validation';
 import { Prisma } from '@rental/database';
 import type { PrismaClient } from '@rental/database';
 import {
@@ -5,6 +7,7 @@ import {
   machineSpecificationsSchema,
 } from '@rental/validation';
 import type {
+  RentalTransportInput,
   RentalInput,
   RentalPatch,
   RentalItemInput,
@@ -26,6 +29,7 @@ import {
 } from './prisma.repositories.js';
 import { PrismaMachineRentalStateWriter } from './prisma.machine-rental-state.js';
 const include = {
+  charges: { orderBy: { createdAt: 'asc' as const } },
   customer: { select: { displayName: true } },
   branch: { select: { name: true } },
   organization: { select: { timezone: true } },
@@ -43,8 +47,30 @@ const include = {
 type Row = Prisma.RentalGetPayload<{ include: typeof include }>;
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 function view(row: Row) {
+  const charges = row.charges.map((charge) => ({
+    id: charge.id,
+    currency: charge.currency,
+    customerPrice: charge.customerPrice.toFixed(2),
+    customerTax: readTax(charge),
+    supplierQuote:
+      charge.supplierCost === null
+        ? null
+        : {
+            name: charge.supplierName,
+            amount: charge.supplierCost.toFixed(2),
+            tax: readTax({
+              taxMode: charge.supplierTaxMode!,
+              taxRate: charge.supplierTaxRate,
+              taxReason: charge.supplierTaxReason,
+            }),
+          },
+    createdAt: charge.createdAt.toISOString(),
+    removedAt: iso(charge.removedAt),
+  }));
   return rentalViewSchema.parse({
     ...row,
+    transportation: charges.find((c) => c.removedAt === null) ?? null,
+    transportationHistory: charges.filter((c) => c.removedAt !== null),
     customerName: row.customer.displayName,
     branchName: row.branch?.name ?? null,
     timezone: row.organization.timezone,
@@ -60,6 +86,7 @@ function view(row: Row) {
       plannedStartAt: iso(item.plannedStartAt),
       plannedEndAt: iso(item.plannedEndAt),
       agreedRate: item.agreedRate?.toFixed() ?? null,
+      tax: readTax(item),
       removedAt: iso(item.removedAt),
       assignments: item.assignments.map((a) => ({
         ...a,
@@ -74,6 +101,7 @@ function view(row: Row) {
       terms: item.terms.map((t) => ({
         ...t,
         agreedRate: t.agreedRate.toFixed(),
+        tax: readTax(t),
         plannedStartAt: iso(t.plannedStartAt),
         plannedEndAt: iso(t.plannedEndAt),
         agreedAt: iso(t.agreedAt),
@@ -354,10 +382,24 @@ export class PrismaRentalRepository implements RentalRepository {
       include,
     });
     await this.addItems(c, row.id, input.items);
+    if (input.transportation)
+      await this.setTransportation(c, row.id, input.transportation);
     await this.refreshDates(c, row.id);
     return (await this.find(c, row.id))!;
   }
   async edit(c: TenantContext, id: string, input: RentalPatch) {
+    if (
+      input.customerId &&
+      (await this.db.financeRecord.findFirst({
+        where: {
+          organizationId: c.organizationId,
+          rentalId: id,
+          customerId: { not: input.customerId },
+        },
+        select: { id: true },
+      }))
+    )
+      throw new AccessError('RENTAL_FINANCIAL_REFERENCE');
     const { items, ...data } = input;
     const result = await this.db.rental.updateMany({
       where: { ...rentalScope(c), id },
@@ -371,6 +413,8 @@ export class PrismaRentalRepository implements RentalRepository {
       },
     });
     if (result.count !== 1) throw new AccessError('NOT_FOUND');
+    if (input.transportation !== undefined)
+      await this.setTransportation(c, id, input.transportation);
     if (items) {
       const old = await this.db.rentalItem.findMany({
         where: {
@@ -403,11 +447,18 @@ export class PrismaRentalRepository implements RentalRepository {
   async addItems(c: TenantContext, id: string, items: RentalItemInput[]) {
     assertTenantContext(c);
     for (const i of items) {
-      const { machineIds, plannedStartAt, plannedEndAt, agreedRate, ...rest } =
-        i;
+      const {
+        machineIds,
+        plannedStartAt,
+        plannedEndAt,
+        agreedRate,
+        tax,
+        ...rest
+      } = i;
       const row = await this.db.rentalItem.create({
         data: {
           ...rest,
+          ...taxColumns(tax ?? { mode: 'UNSPECIFIED' }),
           rateUnit: i.rateUnit ?? null,
           currency: i.currency ?? null,
           commercialNotes: i.commercialNotes ?? null,
@@ -421,6 +472,41 @@ export class PrismaRentalRepository implements RentalRepository {
       });
       for (const machine of machineIds) await this.assign(c, row.id, machine);
     }
+  }
+  private async setTransportation(
+    c: TenantContext,
+    rentalId: string,
+    quote: RentalTransportInput | null,
+  ) {
+    assertTenantContext(c);
+    await this.db.rentalCharge.updateMany({
+      where: {
+        organizationId: c.organizationId,
+        rentalId,
+        kind: 'TRANSPORT',
+        removedAt: null,
+      },
+      data: { removedAt: new Date() },
+    });
+    if (!quote) return;
+    const supplier = quote.supplierQuote;
+    await this.db.rentalCharge.create({
+      data: {
+        organizationId: c.organizationId,
+        rentalId,
+        createdById: c.userId,
+        currency: quote.currency,
+        customerPrice: quote.customerPrice,
+        ...taxColumns(quote.customerTax),
+        supplierName: supplier?.name ?? null,
+        supplierCost: supplier?.amount ?? null,
+        supplierTaxMode: supplier?.tax.mode ?? null,
+        supplierTaxRate:
+          supplier && 'rate' in supplier.tax ? supplier.tax.rate : null,
+        supplierTaxReason:
+          supplier && 'reason' in supplier.tax ? supplier.tax.reason : null,
+      },
+    });
   }
   async setStatus(
     c: TenantContext,
@@ -487,12 +573,15 @@ export class PrismaRentalRepository implements RentalRepository {
       agreedRate: string;
       rateUnit: RentalRateUnit;
       currency: string;
+      tax: Tax;
     },
   ) {
     assertTenantContext(c);
+    const { tax, ...values } = input;
     await this.db.rentalItemTerm.create({
       data: {
-        ...input,
+        ...values,
+        ...taxColumns(tax),
         organizationId: c.organizationId,
         itemId,
         actorUserId: c.userId,

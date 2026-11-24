@@ -1,3 +1,6 @@
+import { FinanceOperationsController } from './finance/finance.controller.js';
+import { FinanceOperationsService } from './finance/finance.service.js';
+import { PrismaFinanceOperationsUnitOfWork } from './infrastructure/prisma.finance-operations.js';
 import { OperationsController } from './operations/operations.controller.js';
 import { OperationsService } from './operations/operations.service.js';
 import { PrismaOperationsUnitOfWork } from './infrastructure/prisma.operations.js';
@@ -56,6 +59,7 @@ class DatabaseLifecycle {
 
 @Module({
   controllers: [
+    FinanceOperationsController,
     OperationsController,
     AdministrationController,
     AnalyticsController,
@@ -69,6 +73,12 @@ class DatabaseLifecycle {
     MachineController,
   ],
   providers: [
+    {
+      provide: FinanceOperationsService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new FinanceOperationsService(new PrismaFinanceOperationsUnitOfWork(db)),
+    },
     {
       provide: OperationsService,
       inject: [DATABASE],

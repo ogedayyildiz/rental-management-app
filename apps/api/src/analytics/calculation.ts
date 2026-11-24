@@ -22,6 +22,7 @@ import {
   type Estimate,
 } from './valuation.js';
 import { monthRanges } from './period.js';
+import { transportSummary } from './transportation.js';
 
 type Metric =
   | 'estimatedContractedValue'
@@ -564,6 +565,12 @@ export function calculateReport(
       to: new Date(to).toISOString(),
     },
     visibility: v,
+    ...((v.pricing || v.transportCosts) &&
+    !q.machineId &&
+    !q.modelId &&
+    !q.categoryId
+      ? { transportation: transportSummary(data.rentals, v, from, to) }
+      : {}),
     summary: row('summary', 'summary', data.machines, events),
     machinesRented: data.machines.filter((m) => m.rentalState === 'RENTED')
       .length,

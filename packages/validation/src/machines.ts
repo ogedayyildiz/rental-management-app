@@ -1,3 +1,4 @@
+import { taxSchema } from './tax.js';
 import { z } from 'zod';
 import { customerCursorSchema } from './customers.js';
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -67,6 +68,7 @@ export const machineFieldsSchema = z.strictObject({
   modelYear: z.number().int().min(1).max(9999).nullable(),
   acquisitionDate: z.iso.date().nullable(),
   acquisitionCost: machineCostSchema.nullable(),
+  tax: taxSchema,
   currency: z
     .string()
     .regex(/^[A-Z]{3}$/)
@@ -79,6 +81,7 @@ export const machineFieldsSchema = z.strictObject({
 });
 export const machineCreateSchema = machineFieldsSchema
   .extend({
+    tax: taxSchema.default({ mode: 'UNSPECIFIED' }),
     serialNumber: machineFieldsSchema.shape.serialNumber.default(null),
     modelYear: machineFieldsSchema.shape.modelYear.default(null),
     acquisitionDate: machineFieldsSchema.shape.acquisitionDate.default(null),
@@ -117,7 +120,7 @@ export const machineSearchSchema = z.strictObject({
   cursor: customerCursorSchema.optional(),
 });
 export const machineViewSchema = machineFieldsSchema
-  .omit({ acquisitionCost: true, currency: true })
+  .omit({ acquisitionCost: true, currency: true, tax: true })
   .extend({
     id: z.uuid(),
     organizationId: z.uuid(),
@@ -125,6 +128,7 @@ export const machineViewSchema = machineFieldsSchema
     categoryId: z.uuid(),
     branchName: z.string().nullable(),
     acquisitionCost: machineCostSchema.nullable().optional(),
+    tax: taxSchema.optional(),
     currency: z.string().nullable().optional(),
     rentalState: machineRentalStateSchema,
     lifecycleState: machineLifecycleStateSchema,
