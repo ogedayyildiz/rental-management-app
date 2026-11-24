@@ -13,11 +13,14 @@ Maintenance/plans/exports, simulator telemetry, Finance estimates, administratio
 Operations/notifications, three-currency selectors, Hours/Days display, VAT/approved
 obligations/collections, and transportation quotes/margin/financial redaction.
 
-The latest observed hosted pass is [run 44485675952](https://github.com/ogedayyildiz/rental-management-app/actions/runs/44485675952)
-at `72b0bb410c699f41a8b39f77aa5e8d1679f07668`, before the operational-finance,
-duration-display and transportation changes. Hosted verification of those latest
-changes is pending; a local pass is not a hosted pass. Dated sections below retain
-their original milestone counts rather than presenting them as today's suite size.
+Hosted [run 45401836678](https://github.com/ogedayyildiz/rental-management-app/actions/runs/45401836678)
+passed on **2026-11-24** at `6f9eee6e95441a63d4b077b6db28633fc76f0869` on
+`codex/verify-telemetry-ci`, including operational finance, duration display and
+transportation. It executed the same 190 tests and 55 browser scenarios, then lint,
+strict TypeScript, formatting and full build. See the detailed hosted record below.
+Dated sections retain their original milestone counts rather than presenting them
+as today's suite size. This record identifies the tested source commit; subsequent
+documentation-only commits have their own GitHub check results.
 
 These checks do not verify live Auth0/MFA, real mobile login, Ruptela hardware,
 Xtellio cloud, production ingress/deployment, email delivery or bank/tax activity.
@@ -217,6 +220,30 @@ Clean-run setup selects Node 24 before installing the pinned pnpm version. No lo
 environment files or Auth0 credentials are needed. This verifies hosted CI, not real
 provider hardware, production ingress, or a production deployment. Existing pg/action
 runtime deprecation warnings were non-failing; tests and assertions were not weakened.
+
+## Hosted verification (2026-11-24)
+
+GitHub Actions [run 45401836678](https://github.com/ogedayyildiz/rental-management-app/actions/runs/45401836678)
+verified commit `6f9eee6e95441a63d4b077b6db28633fc76f0869` on
+`codex/verify-telemetry-ci`. The existing workflow was manually dispatched while
+the push event was awaiting registration; both used the same unchanged workflow.
+Every required step in the recorded run completed successfully:
+
+- Node 24 and pinned pnpm installation with the frozen lockfile.
+- PostgreSQL/TimescaleDB and Redis service initialization.
+- `pnpm test`: 190 passed, zero failed or skipped.
+- `pnpm test:e2e`: all 55 Chromium scenarios passed, including transportation
+  form/revisions/VAT margin/reservation freeze/cancellation/export and financial denial.
+- `pnpm lint`, `pnpm typecheck`, `pnpm format:check` and `pnpm build`.
+- Diagnostic artifact upload and container teardown.
+
+The test databases applied the additive operational-finance, receivable-customer
+protection and transportation migrations along with the previous migrations. The
+normal development database was not used by hosted tests. No tests were weakened,
+skipped or replaced, and no business-code/CI configuration fix was needed for this
+run. Artifacts retain the existing seven-day policy. Real Auth0, real telemetry
+providers, mobile devices, production deployment and bank/tax activity remain
+outside this verification.
 
 Tenant administration adds eight browser scenarios for settings, custom roles, live authorization/financial redaction, membership scopes/status, branches, invitations, audits, platform/foreign/selected-branch denial, last-admin protection and organization switching. That milestone brought the suite to 33 scenarios. Run `pnpm test:e2e --grep administration` for these scenarios. The two additional personas use the same isolated identity boundary.
 

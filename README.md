@@ -4,7 +4,7 @@ Multi-tenant SaaS platform for equipment rental operations, fleet management, ma
 
 > **Project status — 2026-11-24:** The core web platform includes Auth0/onboarding, Customers, Machines, Rentals, Maintenance/plans, simulator-backed Telemetry, Finance/Analytics, operational receivables/payables/settlements, tenant administration, Operations/notifications and rental transportation quotes.
 >
-> The latest local baseline is **190 unit/integration tests and 55 Playwright scenarios**, plus lint, strict TypeScript, formatting and full build. See the [verification record](docs/19-E2E-TESTING.md#current-verification-baseline) for dated local and hosted results; older milestone counts are historical.
+> Local and hosted GitHub verification on **2026-11-24** passed **190 unit/integration tests and 55 Playwright scenarios**, plus lint, strict TypeScript, formatting and full build. See the [verification record](docs/19-E2E-TESTING.md#current-verification-baseline) for the tested commit and run; older milestone counts are historical.
 >
 > Real Auth0 web login, platform bootstrap and tenant onboarding were separately verified. Browser automation uses isolated test personas with real database authorization, not personal Auth0 credentials. Real Ruptela/Xtellio access, production ingress, invitation email delivery, mobile features, remote commands and geofencing remain deferred. Financial estimates and recorded settlements do not constitute statutory accounting or verified bank activity.
 
