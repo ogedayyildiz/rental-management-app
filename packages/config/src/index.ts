@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './deployment.js';
 
 export function readAuth0Environment(environment: NodeJS.ProcessEnv) {
   const result = z

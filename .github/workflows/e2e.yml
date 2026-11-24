@@ -7,6 +7,27 @@ on:
 permissions:
   contents: read
 jobs:
+  deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:deployment
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-diagnostics
+          include-hidden-files: true
+          path: .e2e/rental-stage-test-*/
+          retention-days: 7
   chromium:
     runs-on: ubuntu-latest
     timeout-minutes: 20

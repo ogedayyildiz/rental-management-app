@@ -64,6 +64,64 @@ export async function maintenanceCases(suite, db, fixture, h) {
       body,
       randomUUID(),
     );
+
+  await suite.test(
+    'interactive maintenance exports reject oversized history without truncation or success audit',
+    async () => {
+      const t = await tenant();
+      const row = await create(t);
+      const before = await db.auditEvent.count({
+        where: {
+          organizationId: t.organization.id,
+          action: 'MAINTENANCE_EXPORTED',
+        },
+      });
+      let pages = 0;
+      const bounded = new MaintenanceService({
+        run: (work) =>
+          unit.run((r) =>
+            work({
+              ...r,
+              maintenance: new Proxy(r.maintenance, {
+                get(target, key) {
+                  if (key === 'list')
+                    return async () => {
+                      pages++;
+                      return {
+                        items: Array(100).fill(row),
+                        nextCursor: `${row.createdAt}|${row.id}`,
+                      };
+                    };
+                  const value = Reflect.get(target, key);
+                  return typeof value === 'function'
+                    ? value.bind(target)
+                    : value;
+                },
+              }),
+            }),
+          ),
+      });
+      await assert.rejects(
+        bounded.report(
+          t.principal,
+          t.organization.id,
+          t.machine.id,
+          randomUUID(),
+        ),
+        { code: 'INVALID_INPUT' },
+      );
+      assert.equal(pages, 10);
+      assert.equal(
+        await db.auditEvent.count({
+          where: {
+            organizationId: t.organization.id,
+            action: 'MAINTENANCE_EXPORTED',
+          },
+        }),
+        before,
+      );
+    },
+  );
   const state = async (t) =>
     (await db.machine.findUniqueOrThrow({ where: { id: t.machine.id } }))
       .serviceState;

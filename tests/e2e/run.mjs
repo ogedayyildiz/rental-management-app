@@ -152,6 +152,7 @@ try {
     const env = {
       ...process.env,
       NODE_ENV: 'test',
+      DEPLOYMENT_ENV: 'development',
       TELEMETRY_FRESH_SECONDS: '8',
       DATABASE_URL: local.href,
       RENTAL_E2E_RUN: run,

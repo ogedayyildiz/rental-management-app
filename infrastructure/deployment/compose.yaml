@@ -1,0 +1,123 @@
+name: ${DEPLOYMENT_NAME:?Choose a distinct staging or production project name}
+x-app: &app
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: ['/tmp:size=64m,mode=1777']
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  stop_grace_period: 30s
+  networks: [private, outbound]
+  logging:
+    driver: json-file
+    options: { max-size: '10m', max-file: '3' }
+services:
+  proxy:
+    <<: *app
+    image: nginx:1.30.8-alpine@sha256:6437a63b5c529f0e06162b3f593c0154cff6fa2ea0f94fd7c27928cb399e022d
+    user: '101:101'
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Configure the real HTTPS hostname}
+      NGINX_ENVSUBST_OUTPUT_DIR: /tmp
+    command: ['nginx', '-c', '/tmp/nginx.conf', '-g', 'daemon off;']
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
+      - ./local/tls:/etc/nginx/certificates:ro
+    ports: ['${HTTPS_PORT:-443}:8443']
+    depends_on:
+      web: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --no-check-certificate -q -O /dev/null https://127.0.0.1:8443/health --header "Host: $$PUBLIC_HOST"',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  web:
+    <<: *app
+    image: ${IMAGE_PREFIX:-rental}/web:${IMAGE_TAG:?Use a verified commit SHA}
+    env_file: [./local/web.env]
+    mem_limit: 768m
+    depends_on:
+      api: { condition: service_healthy }
+  api:
+    <<: *app
+    image: ${IMAGE_PREFIX:-rental}/api:${IMAGE_TAG:?Use a verified commit SHA}
+    env_file: [./local/api.env]
+    mem_limit: 1024m
+    depends_on:
+      postgres: { condition: service_healthy }
+  postgres:
+    image: timescale/timescaledb:2.30.0-pg17
+    command:
+      [
+        'postgres',
+        '-c',
+        'log_statement=none',
+        '-c',
+        'log_min_error_statement=panic',
+        '-c',
+        'log_parameter_max_length_on_error=0',
+        '-c',
+        'log_error_verbosity=terse',
+      ]
+    restart: unless-stopped
+    env_file: [./local/postgres.env]
+    volumes: ['postgres:/var/lib/postgresql/data']
+    networks: [private]
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+  redis:
+    image: redis:8.2.2-alpine
+    restart: unless-stopped
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory-policy',
+        'noeviction',
+      ]
+    volumes: ['redis:/data']
+    networks: [private]
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+  migrate:
+    <<: *app
+    image: ${IMAGE_PREFIX:-rental}/migrator:${IMAGE_TAG:?Use a verified commit SHA}
+    restart: 'no'
+    env_file: [./local/migrator.env]
+    profiles: [operations]
+  telemetry:
+    <<: *app
+    image: ${IMAGE_PREFIX:-rental}/telemetry:${IMAGE_TAG:?Use a verified commit SHA}
+    env_file: [./local/idle.env]
+    profiles: [idle-services]
+  worker:
+    <<: *app
+    image: ${IMAGE_PREFIX:-rental}/worker:${IMAGE_TAG:?Use a verified commit SHA}
+    env_file: [./local/idle.env]
+    profiles: [idle-services]
+networks:
+  private: { internal: true }
+  outbound: {}
+volumes:
+  postgres: {}
+  redis: {}

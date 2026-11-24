@@ -8,6 +8,14 @@ datasource db {
   provider = "postgresql"
 }
 
+// Infrastructure-owned; business runtime has SELECT only.
+model DeploymentIdentity {
+  id           Int      @id
+  environment  String
+  deploymentId String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+}
+
 enum AccountStatus {
   ACTIVE
   DISABLED

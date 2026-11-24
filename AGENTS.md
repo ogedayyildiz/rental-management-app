@@ -876,6 +876,17 @@ historical VAT; document absence cannot imply exemption. ESTIMATE_V1 never creat
 debt. Approval freezes obligations; settlements require idempotency, scope, audit
 and overpayment checks. Corrections reverse payment history rather than deleting it.
 
+## Deployment and operational changes
+
+Read `docs/26-STAGING-PRODUCTION-READINESS.md` before changing production images,
+environment validation, cookies/headers, health checks, migration tooling or release
+workflows. Keep operator/migration credentials out of application containers and
+preserve the environment-bound, non-owner runtime database role. Never reset a
+development/staging/production database to verify a deployment. Run
+`pnpm test:deployment` for deployment/security changes as well as the applicable
+unit and browser regressions. Distinguish disposable HTTPS/restore tests from
+actual hosted deployment, live Auth0, encrypted off-site backup and PITR evidence.
+
 Before changing rental transport quotes or transport margin reporting, also read
 `docs/25-RENTAL-TRANSPORTATION.md`. Keep supplier costs separately permissioned,
 preserve quote history, and keep estimated transport margin separate from machine

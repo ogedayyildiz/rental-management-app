@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuth0 } from '../../../../lib/auth0';
+import { boundedBody } from '../../../../lib/web-security';
 import {
   financeOperationsEndpointAllowed,
   operationsEndpointAllowed,
@@ -52,9 +53,8 @@ async function forward(
     if (!(await auth0.getSession()))
       return NextResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 });
     const { token } = await auth0.getAccessToken();
-    const body = request.method !== 'GET' ? await request.text() : undefined;
-    if (body && body.length > 16384)
-      return NextResponse.json({ code: 'INVALID_INPUT' }, { status: 400 });
+    const body =
+      request.method !== 'GET' ? await boundedBody(request) : undefined;
     const response = await fetch(
       new URL(
         endpoint + new URL(request.url).search,
@@ -78,32 +78,35 @@ async function forward(
         endpoint,
       ) &&
       response.ok;
-    return new NextResponse(
-      isReport ? await response.arrayBuffer() : await response.text(),
-      {
-        status: response.status,
-        headers: {
-          'content-type': isReport
-            ? endpoint.endsWith('/pdf')
-              ? 'application/pdf'
-              : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            : 'application/json',
-          ...(isReport
-            ? {
-                'content-disposition':
-                  'attachment; filename="' +
-                  (endpoint.includes('/finance/')
-                    ? 'finance-estimates.'
-                    : 'maintenance.') +
-                  (endpoint.endsWith('/pdf') ? 'pdf' : 'xlsx') +
-                  '"',
-              }
-            : {}),
-          'cache-control': 'no-store',
-        },
+    return new NextResponse(isReport ? response.body : await response.text(), {
+      status: response.status,
+      headers: {
+        'content-type': isReport
+          ? endpoint.endsWith('/pdf')
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'application/json',
+        ...(isReport
+          ? {
+              'content-disposition':
+                'attachment; filename="' +
+                (endpoint.includes('/finance/')
+                  ? 'finance-estimates.'
+                  : 'maintenance.') +
+                (endpoint.endsWith('/pdf') ? 'pdf' : 'xlsx') +
+                '"',
+            }
+          : {}),
+        'cache-control': 'no-store',
+        ...(response.headers.has('x-request-id')
+          ? { 'x-request-id': response.headers.get('x-request-id')! }
+          : {}),
+        ...(response.status === 429 ? { 'retry-after': '5' } : {}),
       },
-    );
-  } catch {
+    });
+  } catch (error) {
+    if (error instanceof RangeError)
+      return NextResponse.json({ code: 'INVALID_INPUT' }, { status: 413 });
     return NextResponse.json(
       { code: 'AUTHENTICATION_OR_API_UNAVAILABLE' },
       { status: 503 },

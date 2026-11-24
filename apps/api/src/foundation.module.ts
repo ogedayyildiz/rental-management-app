@@ -49,7 +49,8 @@ import { CustomerController } from './customers/customer.controller.js';
 import { CustomerService } from './customers/customer.service.js';
 import { PrismaCustomerUnitOfWork } from './infrastructure/prisma.customers.js';
 
-export const DATABASE = Symbol('database');
+import { DATABASE } from './database.token.js';
+export { DATABASE } from './database.token.js';
 class DatabaseLifecycle {
   constructor(private readonly database: PrismaClient) {}
   async onModuleDestroy(): Promise<void> {
@@ -183,6 +184,7 @@ class DatabaseLifecycle {
     { provide: APP_GUARD, useClass: AccessGuard },
     { provide: APP_FILTER, useClass: SafeErrorFilter },
   ],
+  exports: [DATABASE],
 })
 export class FoundationModule {}
 import { AnalyticsController } from './analytics/analytics.controller.js';

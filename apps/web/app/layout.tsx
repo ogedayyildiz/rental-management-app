@@ -6,6 +6,8 @@ import { translate } from '@rental/i18n';
 import './globals.css';
 
 export const metadata: Metadata = { title: translate('en', 'app.title') };
+// Per-response CSP nonces must never be embedded in a shared static HTML artifact.
+export const dynamic = 'force-dynamic';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

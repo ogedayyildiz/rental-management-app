@@ -1,0 +1,52 @@
+pid /tmp/nginx.pid;
+worker_processes auto;
+error_log /dev/null crit;
+events { worker_connections 1024; }
+http {
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  client_body_temp_path /tmp/client;
+  proxy_temp_path /tmp/proxy;
+  fastcgi_temp_path /tmp/fastcgi;
+  uwsgi_temp_path /tmp/uwsgi;
+  scgi_temp_path /tmp/scgi;
+  server_tokens off;
+  # URLs, callback codes, invitation secrets, headers and bodies are never logged.
+  log_format safe escape=json '{"event":"edge_request","requestId":"$request_id","method":"$request_method","status":$status,"duration":$request_time}';
+  access_log /dev/stdout safe;
+  limit_req_zone $binary_remote_addr zone=general:10m rate=300r/m;
+  limit_req_zone $binary_remote_addr zone=auth:10m rate=30r/m;
+  limit_req_zone $binary_remote_addr zone=invitation:10m rate=10r/m;
+  limit_req_zone $binary_remote_addr zone=exports:10m rate=20r/m;
+  limit_req_status 429;
+  client_max_body_size 16k;
+  client_body_timeout 15s;
+  client_header_timeout 15s;
+  keepalive_timeout 30s;
+  proxy_connect_timeout 5s;
+  proxy_read_timeout 35s;
+  proxy_send_timeout 15s;
+  proxy_buffering off;
+  proxy_set_header Host ${PUBLIC_HOST};
+  proxy_set_header X-Forwarded-Host ${PUBLIC_HOST};
+  proxy_set_header X-Forwarded-Proto https;
+  proxy_set_header X-Forwarded-For $remote_addr;
+  server {
+    listen 8443 ssl;
+    server_name ${PUBLIC_HOST};
+    ssl_certificate /etc/nginx/certificates/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certificates/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    if ($host != '${PUBLIC_HOST}') { return 444; }
+    location = /health { access_log off; proxy_pass http://web:3000; }
+    location = /ready { access_log off; proxy_pass http://web:3000; }
+    location /auth/ { limit_req zone=auth burst=10 nodelay; proxy_pass http://web:3000; }
+    location = /api/backend/invitations/accept { limit_req zone=invitation burst=5 nodelay; proxy_pass http://web:3000; }
+    location ~ ^/api/backend/organizations/[^/]+/(finance/export|maintenance/machines/[^/]+/export/) {
+      limit_req zone=exports burst=3 nodelay; proxy_pass http://web:3000;
+    }
+    location /_next/static/ { proxy_pass http://web:3000; }
+    location /map/ { proxy_pass http://web:3000; }
+    location / { limit_req zone=general burst=50 nodelay; proxy_pass http://web:3000; }
+  }
+}

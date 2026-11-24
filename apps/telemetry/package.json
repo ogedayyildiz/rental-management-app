@@ -15,5 +15,8 @@
     "@rental/database": "workspace:*",
     "@rental/validation": "workspace:*",
     "@rental/config": "workspace:*"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

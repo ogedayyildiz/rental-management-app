@@ -31,5 +31,8 @@
     "@nestjs/cli": "12.0.8",
     "@nestjs/testing": "12.1.2",
     "@types/pdfkit": "0.17.6"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

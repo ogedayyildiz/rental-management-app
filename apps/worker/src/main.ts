@@ -1,10 +1,23 @@
 import { createServer } from 'node:http';
-import { readServiceEnvironment } from '@rental/config';
+import { readServiceEnvironment, validateDeployment } from '@rental/config';
+
+validateDeployment(process.env, 'worker');
 
 const { host, port } = readServiceEnvironment(process.env, 'WORKER_PORT', 3003);
 
 // Liveness only: ingestion/job processing is intentionally not implemented.
 const server = createServer((request, response) => {
+  if (request.method === 'GET' && request.url === '/ready') {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(
+      JSON.stringify({
+        status: 'idle',
+        service: 'worker',
+        consumersEnabled: false,
+      }),
+    );
+    return;
+  }
   if (request.method === 'GET' && request.url === '/health') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({ status: 'ok', service: 'worker' }));

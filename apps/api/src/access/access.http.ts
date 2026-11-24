@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { requestId } from '../request-context.js';
 import {
   Catch,
   HttpException,
@@ -77,11 +77,11 @@ export class AccessGuard implements CanActivate {
     );
     if (platform) {
       await this.access.requirePlatform(principal, platform);
-      requests.set(request, { principal, requestId: randomUUID() });
+      requests.set(request, { principal, requestId: requestId(request) });
       return true;
     }
     if (this.reflector.getAllAndOverride<boolean>(AUTHENTICATED, targets)) {
-      requests.set(request, { principal, requestId: randomUUID() });
+      requests.set(request, { principal, requestId: requestId(request) });
       return true;
     }
     const permission = this.reflector.getAllAndOverride<TenantPermission>(
@@ -95,7 +95,7 @@ export class AccessGuard implements CanActivate {
       request.params.organizationId,
     );
     requirePermission(context, permission);
-    requests.set(request, { principal, requestId: randomUUID() });
+    requests.set(request, { principal, requestId: requestId(request) });
     return true;
   }
 }
@@ -128,6 +128,15 @@ export class SafeErrorFilter implements ExceptionFilter {
       status = exception.getStatus();
       code = `HTTP_${status}`;
     }
+    if (status >= 500)
+      console.error(
+        JSON.stringify({
+          event: 'request_failed',
+          service: 'api',
+          status,
+          requestId: requestId(host.switchToHttp().getRequest<object>()),
+        }),
+      );
     const response = host
       .switchToHttp()
       .getResponse<{ status(code: number): { json(body: unknown): void } }>();

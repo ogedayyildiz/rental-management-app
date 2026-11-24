@@ -24,3 +24,4 @@ Thumbs.db
 packages/database/src/generated/
 .e2e/
 /apps/web/public/map/
+/infrastructure/deployment/local/

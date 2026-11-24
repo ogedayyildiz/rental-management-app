@@ -1,0 +1,98 @@
+name: Prepare or deploy staging
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Exact 40-character commit with passing Workspace verification
+        required: true
+      deploy:
+        description: Deploy to the explicitly configured staging host (requires environment approval)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: staging-release
+  cancel-in-progress: false
+jobs:
+  artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Require green verification for the exact commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.inputs.commit;
+            if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('An immutable commit SHA is required');
+            const { data } = await github.rest.actions.listWorkflowRuns({ ...context.repo, workflow_id: 'e2e.yml', head_sha: sha, status: 'success', per_page: 10 });
+            if (!data.workflow_runs.some(r => r.head_sha === sha && r.conclusion === 'success')) throw new Error('Workspace verification must pass first');
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 12.9.1 }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:deployment
+        env:
+          DEPLOYMENT_TEST_TAG: ${{ inputs.commit }}
+      - name: Save verified portable images
+        env:
+          IMAGE_TAG: ${{ inputs.commit }}
+        run: docker save -o images.tar rental/api:$IMAGE_TAG rental/web:$IMAGE_TAG rental/worker:$IMAGE_TAG rental/telemetry:$IMAGE_TAG rental/migrator:$IMAGE_TAG
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-release
+          path: |
+            images.tar
+            infrastructure/deployment/compose.yaml
+            infrastructure/deployment/nginx.conf.template
+            infrastructure/deployment/release.sh
+          retention-days: 3
+  deploy:
+    if: ${{ inputs.deploy }}
+    needs: artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - uses: actions/download-artifact@v4
+        with: { name: staging-release, path: release }
+      - name: Deploy only to an explicitly configured and approved host
+        env:
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_SSH_USER: ${{ vars.STAGING_SSH_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+          IMAGE_TAG: ${{ inputs.commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$STAGING_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]+$ ]] || exit 1
+          [[ "$STAGING_SSH_USER" =~ ^[a-z_][a-z0-9_-]+$ ]] || exit 1
+          test -n "$STAGING_SSH_KEY" && test -n "$STAGING_KNOWN_HOSTS"
+          umask 077
+          key="$RUNNER_TEMP/staging-key"
+          known="$RUNNER_TEMP/staging-known-hosts"
+          printf '%s\n' "$STAGING_SSH_KEY" > "$key"
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > "$known"
+          trap 'rm -f "$key" "$known"' EXIT
+          options=(-i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known")
+          target="$STAGING_SSH_USER@$STAGING_HOST"
+          scp "${options[@]}" release/images.tar release/infrastructure/deployment/{compose.yaml,nginx.conf.template,release.sh} "$target:/opt/rental-staging/"
+          ssh "${options[@]}" "$target" "sh /opt/rental-staging/release.sh $IMAGE_TAG"
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - name: External HTTPS smoke (no user credentials)
+        run: node infrastructure/deployment/smoke.mjs
+        env:
+          STAGING_ORIGIN: ${{ vars.STAGING_ORIGIN }}
+          AUTH0_ISSUER: ${{ vars.STAGING_AUTH0_ISSUER }}
+          AUTH0_AUDIENCE: ${{ vars.STAGING_AUTH0_AUDIENCE }}

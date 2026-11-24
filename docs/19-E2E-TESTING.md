@@ -1,5 +1,14 @@
 # Automated browser verification
 
+## Deployment verification
+
+`pnpm test:deployment` builds and runs hardened production images separately from
+the test-auth harness. It uses random disposable Docker resources, synthetic OIDC
+discovery and an actual logical backup/restore drill. No personal Auth0 credentials
+or development database are used. See [deployment readiness](26-STAGING-PRODUCTION-READINESS.md)
+for its isolation, artifacts and external staging gates. Browser regressions also
+check CSP/nonces, readiness, Origin/body limits and bounded read diagnostics.
+
 ## Current verification baseline
 
 The latest local verification on **2026-11-24** passed **190 unit/integration/security

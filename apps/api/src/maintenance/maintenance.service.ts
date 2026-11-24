@@ -549,6 +549,9 @@ export class MaintenanceService {
         );
         rows.push(...page.items);
         cursor = page.nextCursor;
+        // Fail rather than exhaust memory or silently truncate an interactive export.
+        if (rows.length > 1000 || (rows.length === 1000 && cursor))
+          throw new AccessError('INVALID_INPUT');
       } while (cursor);
       const records = rows.map((x) => ({
         id: x.id,

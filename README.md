@@ -12,6 +12,11 @@ See [Machine implementation and smoke test](docs/16-MACHINE-IMPLEMENTATION.md) f
 
 See [Customer implementation contracts](docs/15-CUSTOMER-IMPLEMENTATION.md) for permissions, identifiers, addresses, pagination, audit behavior and development-data notes.
 
+See [Staging / Production Readiness](docs/26-STAGING-PRODUCTION-READINESS.md)
+for portable production images, environment separation, restricted database roles,
+TLS/Auth0 setup gates, migrations, backup/restore, deployment smoke and CI/CD.
+No cloud host or real staging deployment is selected by these artifacts.
+
 See [authentication and onboarding setup](docs/13-AUTHENTICATION-AND-ONBOARDING.md)
 for required environment values, Auth0 dashboard steps, callback URLs and current
 verification limits. The API and web server require Auth0

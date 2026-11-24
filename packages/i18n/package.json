@@ -12,5 +12,8 @@
   },
   "devDependencies": {
     "@rental/config": "workspace:*"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }
