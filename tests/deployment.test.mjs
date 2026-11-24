@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { EventEmitter } from 'node:events';
+import { spawnSync } from 'node:child_process';
 import {
   ExportCapacityInterceptor,
   ReadinessController,
@@ -196,4 +197,24 @@ test('readiness dependency failures expose no database error detail', async () =
       error.getStatus() === 503 &&
       !JSON.stringify(error.getResponse()).includes('private-database-detail'),
   );
+});
+
+test('post-deployment smoke failures do not log configured credentials or assertion values', () => {
+  const secret = randomBytes(32).toString('hex');
+  const result = spawnSync(
+    process.execPath,
+    ['infrastructure/deployment/smoke.mjs'],
+    {
+      env: { ...process.env, STAGING_ORIGIN: `invalid-origin-${secret}` },
+      encoding: 'utf8',
+      windowsHide: true,
+    },
+  );
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.equal(
+    result.stderr.trim(),
+    '{"event":"staging_smoke_failed","realLoginVerified":false}',
+  );
+  assert.ok(!result.stderr.includes(secret));
 });

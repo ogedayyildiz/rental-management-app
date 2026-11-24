@@ -102,6 +102,26 @@ const isolatedFlags = [
 const checked = [];
 let browser;
 try {
+  docker(
+    [
+      'compose',
+      '--env-file',
+      'infrastructure/deployment/.env.example',
+      '-f',
+      'infrastructure/deployment/compose.yaml',
+      'config',
+      '--no-env-resolution',
+      '--quiet',
+    ],
+    {
+      DEPLOYMENT_NAME: 'rental-config-test',
+      PUBLIC_HOST: 'staging.example.test',
+      IMAGE_TAG: tag,
+    },
+  );
+  checked.push(
+    'production Compose validates without reading local secret files',
+  );
   if (!process.argv.includes('--no-build'))
     for (const image of images) {
       console.info(`Building ${image}`);
@@ -129,6 +149,8 @@ try {
       assert.equal(result.status, 0, `Build failed: ${image}`);
     }
   docker(['network', 'create', '--internal', run]);
+  // Match Compose: only the edge also joins a publishable network. Database stays private.
+  docker(['network', 'create', run + '-edge']);
   const gitOpenSSL = 'C:/Program Files/Git/usr/bin/openssl.exe';
   const openssl =
     process.platform === 'win32' && existsSync(gitOpenSSL)
@@ -300,6 +322,8 @@ try {
     proxyImage,
     { PUBLIC_HOST: '127.0.0.1', NGINX_ENVSUBST_OUTPUT_DIR: '/tmp' },
     [
+      '--network',
+      run + '-edge',
       '--user',
       '101:101',
       '-p',
@@ -403,9 +427,11 @@ try {
   );
   assert.equal(authorization.searchParams.get('audience'), 'stage-test-api');
   assert.equal(authorization.searchParams.get('code_challenge_method'), 'S256');
-  for (const cookie of login
+  const transactionCookies = login
     .headersArray()
-    .filter((h) => h.name.toLowerCase() === 'set-cookie')) {
+    .filter((h) => h.name.toLowerCase() === 'set-cookie');
+  assert.ok(transactionCookies.length > 0);
+  for (const cookie of transactionCookies) {
     assert.match(cookie.value, /httponly/i);
     assert.match(cookie.value, /secure/i);
     assert.match(cookie.value, /samesite=lax/i);
@@ -570,6 +596,8 @@ try {
       for (const secret of [password, runtimePassword])
         log = log.replaceAll(secret, '[redacted]');
       await writeFile(resolve(scratch, name + '.log'), log);
+      const state = docker(['inspect', '--format', '{{json .State}}', name]);
+      await writeFile(resolve(scratch, name + '-state.json'), state);
     } catch {
       /* container may not have started */
     }
@@ -581,11 +609,12 @@ try {
       /* own disposable container only */
     }
   }
-  try {
-    docker(['network', 'rm', run]);
-  } catch {
-    /* absent */
-  }
+  for (const network of [run, run + '-edge'])
+    try {
+      docker(['network', 'rm', network]);
+    } catch {
+      /* absent */
+    }
   await rm(resolve(scratch, 'privkey.pem'), { force: true });
   await rm(resolve(scratch, 'fullchain.pem'), { force: true });
   await writeFile(
