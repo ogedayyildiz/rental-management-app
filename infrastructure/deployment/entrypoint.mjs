@@ -15,15 +15,17 @@ const child = spawn(process.execPath, process.argv.slice(2), {
   windowsHide: true,
 });
 let timer;
+let stopping = false;
 for (const signal of ['SIGINT', 'SIGTERM'])
   process.once(signal, () => {
+    stopping = true;
     child.kill(signal);
     timer = setTimeout(() => child.kill('SIGKILL'), 25000);
     timer.unref();
   });
-child.once('exit', (code) => {
+child.once('exit', (code, signal) => {
   clearTimeout(timer);
-  process.exitCode = code ?? 1;
+  process.exitCode = code ?? (stopping && signal !== 'SIGKILL' ? 0 : 1);
 });
 child.once('error', () => {
   console.error('{"event":"process_start_failed"}');

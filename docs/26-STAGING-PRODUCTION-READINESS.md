@@ -1,6 +1,6 @@
 # Staging / Production Readiness — Phase 1
 
-Status: implementation and verification in progress. This is a deployment foundation, not evidence of a live staging or production installation. The preceding business baseline is commit `774e1f3` (190 unit/integration tests, 55 browser scenarios). Record the new results below after execution.
+Status: the deployment foundation is implemented and automatically verified. This is not evidence of a live staging or production installation. The preceding business baseline was commit `774e1f3` (190 unit/integration tests, 55 browser scenarios); the verified readiness baseline is recorded below.
 
 ## 1. Scope and topology
 
@@ -98,7 +98,7 @@ Dependency failures produce generic 503 readiness responses without hostnames, c
 
 Nest shutdown hooks close database connections. Node services stop accepting HTTP work and close idle connections. Container init forwards signals; the entrypoint forwards TERM/INT and allows 25 seconds before forced exit, within Compose's 30-second stop grace. API request/header timeouts are 30/15 seconds; the bridge upstream timeout is ten seconds. Interactive operations must finish within these budgets or roll back. There are no queue acknowledgements or in-flight provider packets to claim safe today; future consumers require drain/retry/idempotency verification before enablement. Never kill an executing migration as the normal release procedure.
 
-API structured logs contain service, generated request ID, method, status and duration. The same request ID flows into normal authenticated audit actions and the bridge response. API error messages are deliberately coarse; exception messages, request bodies, URLs/query strings, cookies, headers, personal names and money values are omitted. Edge JSON logs omit URLs (including Auth0 callback codes), headers and bodies; edge critical error logging is suppressed to avoid raw request contexts. Web instrumentation emits a coarse server-failure event. Worker/telemetry startup failures remain structured. Restrict log access and use log rotation; do not enable ORM parameter/debug-auth logging in deployment.
+API structured logs contain service, generated request ID, method, normalized route template, status and duration. The same request ID flows into normal authenticated audit actions and the bridge response. API error messages are deliberately coarse; exception messages, request bodies, URLs/query strings, cookies, headers, personal names and money values are omitted. Edge JSON logs omit URLs (including Auth0 callback codes), headers and bodies; edge critical error logging is suppressed to avoid raw request contexts. Web instrumentation emits a coarse server-failure event. Worker/telemetry startup failures remain structured. Restrict log access and use log rotation; do not enable ORM parameter/debug-auth logging in deployment.
 
 Health, 5xx/error rate, request duration, container restarts/OOM, database storage/connections, backup freshness and Redis status are the initial monitoring signals. A host/platform collector and alert destination must be configured before operational handover. Sentry and later OpenTelemetry remain the documented direction, but no credentialed exporter/account is claimed here. `onRequestError` and backend structured error handling are safe collection boundaries; any future exporter must retain redaction and avoid duplicate systems. Hosted centralized monitoring and alert delivery still require external setup.
 
@@ -138,7 +138,7 @@ The browser suite adds a small repeat-read timing sample for domain lists with a
 
 ## 11. Build and release operations
 
-Build from the exact verified commit using `infrastructure/deployment/Dockerfile` targets `web`, `api`, `worker`, `telemetry`, `migrator`:
+The local container drill needs Docker Engine, OpenSSL (Git for Windows supplies it), Chromium, and at least 15 GB of spare build space. A Linux CI runner can perform the same check when local resources are insufficient. Build from the exact verified commit using `infrastructure/deployment/Dockerfile` targets `web`, `api`, `worker`, `telemetry`, `migrator`:
 
 ```sh
 docker build -f infrastructure/deployment/Dockerfile --target web -t rental/web:COMMIT .
@@ -179,7 +179,11 @@ No invitation delivery provider is selected. Existing invitation token delivery 
 
 ## 14. Verification record and remaining gates
 
-Record exact local/hosted results after the phase checks finish. Until then, the preceding 190/55 baseline remains historical; it does not verify these changes.
+On **2026-11-24**, local verification passed **199 unit/integration/security tests** and **57 Chromium Playwright scenarios**, plus lint, strict TypeScript, formatting and full workspace build. The normal development database received only additive migration `202611240002_deployment_identity` (16 migrations total); existing development records were preserved and PostgreSQL/Redis remained healthy.
+
+Hosted [run 45420210099](https://github.com/ogedayyildiz/rental-management-app/actions/runs/45420210099) at `b12a2721b70f13dd22cbd2ee7a398a7b3d77ae24` passed the full regression/quality job and production deployment job. All five images built and started under their intended restrictions. The drill verified explicit/idempotent migrations and seed, no seeded business identities, runtime audit restrictions, production artifact isolation, HTTPS/CSP/cookies/PKCE redirects against synthetic discovery, rate limiting, environment/test-auth rejection, dependency failure, and an actual TimescaleDB logical restore with data/audit protection intact. Follow-up branch commits rerun these gates; the drill also asserts orderly process shutdown without forced termination.
+
+An initial Linux probe failure was caused by attaching the test TLS edge only to an internal Docker network. The harness now mirrors Compose's private plus publishable edge networks; no database port was exposed. Local container building was constrained by approximately 2 GB free disk space; the complete production-container and restore drill ran successfully on hosted Linux CI. This does not claim local Windows container-drill success, live staging Auth0, off-site encrypted backup safety, hosted monitoring, or production-scale recovery.
 
 Required external gates: choose host/provider and regions; actual DNS/TLS and renewal; separate staging/production Auth0 configuration and dedicated-account login/MFA checks; runtime/operator secrets and restricted host access; off-host encrypted backups and production-size recovery/PITR drill; log collection/alerts and patch/vulnerability management; representative capacity checks; optional SSH/GitHub environment approval setup. Object storage, real-provider telemetry ingress, queues, mobile, remote commands, geofencing and email delivery remain disabled/deferred.
 

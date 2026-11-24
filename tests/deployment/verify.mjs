@@ -564,6 +564,19 @@ try {
   assert.equal((await context.request.get(origin + '/ready')).status(), 503);
   assert.equal((await context.request.get(origin + '/health')).status(), 200);
   checked.push('dependency failure distinguishes readiness from liveness');
+  // Normal shutdown must not require Docker's SIGKILL or report a successful drain as a crash.
+  for (const image of ['web', 'api', 'worker', 'telemetry']) {
+    docker(['stop', '--time', '30', run + '-' + image]);
+    const state = JSON.parse(
+      docker(['inspect', '--format', '{{json .State}}', run + '-' + image]),
+    );
+    assert.equal(state.Status, 'exited');
+    assert.equal(state.ExitCode, 0);
+    assert.equal(state.OOMKilled, false);
+  }
+  checked.push(
+    'Web/API/worker/telemetry drain and stop normally without forced termination',
+  );
 } catch (error) {
   // Docker exceptions can contain complete child-process output. Never echo that object.
   console.error(

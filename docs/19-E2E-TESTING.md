@@ -11,25 +11,28 @@ check CSP/nonces, readiness, Origin/body limits and bounded read diagnostics.
 
 ## Current verification baseline
 
-The latest local verification on **2026-11-24** passed **190 unit/integration/security
-tests and all 55 Chromium Playwright scenarios**, with zero failures/skips, plus
+The latest local verification on **2026-11-24** passed **199 unit/integration/security
+tests and all 57 Chromium Playwright scenarios**, with zero failures/skips, plus
 lint, strict TypeScript, formatting and the full workspace build. The normal local
-database has all 15 Prisma migrations applied; tests use their own disposable
+database has all 16 Prisma migrations applied; tests use their own disposable
 databases and never reset development data.
 
 Current coverage includes Customers/Machines, Rental lifecycle and partial returns,
 Maintenance/plans/exports, simulator telemetry, Finance estimates, administration,
 Operations/notifications, three-currency selectors, Hours/Days display, VAT/approved
-obligations/collections, and transportation quotes/margin/financial redaction.
+obligations/collections, transportation quotes/margin/financial redaction, production
+configuration/security guards, and bounded operational read diagnostics.
 
-Hosted [run 45401836678](https://github.com/ogedayyildiz/rental-management-app/actions/runs/45401836678)
-passed on **2026-11-24** at `6f9eee6e95441a63d4b077b6db28633fc76f0869` on
-`codex/verify-telemetry-ci`, including operational finance, duration display and
-transportation. It executed the same 190 tests and 55 browser scenarios, then lint,
-strict TypeScript, formatting and full build. See the detailed hosted record below.
+Hosted [run 45420210099](https://github.com/ogedayyildiz/rental-management-app/actions/runs/45420210099)
+passed on **2026-11-24** at `b12a2721b70f13dd22cbd2ee7a398a7b3d77ae24` on
+`codex/verify-telemetry-ci`. It executed the same 199 tests and 57 browser scenarios,
+then lint, strict TypeScript, formatting and full build. Its separate deployment job
+built all five production images and verified HTTPS, restricted database roles,
+Auth0 redirect/cookie structure without real login, rate limits, readiness failures,
+test-auth rejection and an actual PostgreSQL/TimescaleDB logical restore.
 Dated sections retain their original milestone counts rather than presenting them
-as today's suite size. This record identifies the tested source commit; subsequent
-documentation-only commits have their own GitHub check results.
+as today's suite size. This record identifies the tested source commit; follow-up
+commits rerun the branch's required GitHub checks, including the production drill.
 
 These checks do not verify live Auth0/MFA, real mobile login, Ruptela hardware,
 Xtellio cloud, production ingress/deployment, email delivery or bank/tax activity.
@@ -293,6 +296,6 @@ to test the real source-domain contracts. Production Auth0 remains unchanged.
 Transportation adds two browser scenarios in `transportation.spec.mjs`: actual
 Rental form creation/edit/reload, separate VAT bases and margin, historical quotes,
 reservation freeze, Finance/XLSX results, cancellation and no-finance redaction.
-The full suite is now 55 scenarios. Focused execution is
+The transportation milestone brought the suite to 55 scenarios. Focused execution is
 `pnpm test:e2e --grep transportation`; cross-domain release verification still runs
 the full suite. See [Transportation](25-RENTAL-TRANSPORTATION.md) for its contracts.
