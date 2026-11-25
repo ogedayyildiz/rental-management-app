@@ -1,7 +1,7 @@
 name: Workspace verification
 on:
   push:
-    branches: ['codex/verify-telemetry-ci']
+    branches: ['main', 'codex/verify-telemetry-ci']
   workflow_dispatch:
   pull_request:
 permissions:

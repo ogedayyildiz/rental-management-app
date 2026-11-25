@@ -70,6 +70,11 @@ For each selected real HTTPS origin `ORIGIN`:
 5. `APP_BASE_URL=ORIGIN`; `API_BASE_URL=http://api:3001` only on the private Compose network. API has no public browser endpoint and no wildcard credentialed CORS.
 6. Native application rollout is deferred. Do not add speculative mobile callback URLs or secrets.
 
+These are the persistent hosted-application callbacks. The existing one-time
+operator CLI requires a temporary workstation-loopback callback, removed immediately
+after bootstrap; the controlled staging procedure and private database access are
+documented in [the staging plan](27-STAGING-DEPLOYMENT-PLAN.md#8-first-platform-operator).
+
 The Auth0 SDK uses HttpOnly encrypted cookies; the application explicitly sets Secure for HTTPS, SameSite=Lax, Path=/ and no Domain. Broader cookie-domain/path overrides are rejected. Session duration remains eight hours absolute and one hour inactivity. Callback destinations remain fixed (`/dashboard` or the safe error page), not caller-controlled external redirects. HTTPS and the configured origin drive callbacks, not untrusted forwarded host headers.
 
 Automated production-image checks use synthetic OIDC discovery to check redirect, PKCE, audience and cookie structure; they do **not** claim real Auth0 login/MFA verification. After configuring real staging, manually verify login/logout/re-login, invitations, MFA/recovery and operator/tenant separation with dedicated staging accounts. Never automate personal credentials.

@@ -17,6 +17,10 @@ for portable production images, environment separation, restricted database role
 TLS/Auth0 setup gates, migrations, backup/restore, deployment smoke and CI/CD.
 No cloud host or real staging deployment is selected by these artifacts.
 
+See the [First staging deployment plan](docs/27-STAGING-DEPLOYMENT-PLAN.md)
+for resource estimates, topology choices, private/public boundaries, the Auth0
+and secret checklists, operator bootstrap and non-destructive staging smoke tests.
+
 See [authentication and onboarding setup](docs/13-AUTHENTICATION-AND-ONBOARDING.md)
 for required environment values, Auth0 dashboard steps, callback URLs and current
 verification limits. The API and web server require Auth0
