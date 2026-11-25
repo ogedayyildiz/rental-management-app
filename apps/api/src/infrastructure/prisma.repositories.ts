@@ -146,10 +146,11 @@ export class PrismaBranchRepository implements BranchRepository {
     context: TenantContext,
     id: string,
     name: string,
+    active?: boolean,
   ): Promise<BranchView | null> {
     const rows = await this.database.branch.updateManyAndReturn({
       where: this.where(context, id),
-      data: { name },
+      data: { name, ...(active === undefined ? {} : { active }) },
       select: branchSelect,
     });
     return rows[0] ?? null;

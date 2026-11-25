@@ -96,6 +96,8 @@ ADR-007-SEPARATE-MACHINE-STATE-DIMENSIONS.md
 ADR-008-PERMISSION-BASED-AUTHORIZATION.md
 ADR-009-REMOTE-COMMAND-SAFETY-MODEL.md
 ADR-010-POSTGRESQL-TIMESCALEDB.md
+ADR-011-OIDC-AUTHENTICATION-PROVIDER.md
+ADR-012-OPERATIONAL-RECEIVABLES-AND-PAYABLES.md
 ```
 
 ---
@@ -739,6 +741,14 @@ remote command transitions
 
 Negative authorization tests are mandatory for sensitive features.
 
+User-visible workflow changes must add or update Playwright E2E coverage and run
+the relevant browser tests before being declared technically verified. Use the
+isolated test personas described in `docs/19-E2E-TESTING.md` to exercise forms and
+workflow actions directly, instead of asking the owner to perform each routine
+browser check. Run `pnpm test:e2e` for cross-domain changes. Keep genuinely external
+Auth0/provider, real-device and deployment verification separate and explicitly
+report anything not verified. Never use personal Auth0 credentials for automation.
+
 Example:
 
 ```text
@@ -849,3 +859,35 @@ relevant ADR updated if architecture changed
 ```
 
 The implementation must remain consistent with the documented domain model and architecture.
+
+## Tenant administration implementation
+
+Before changing organization settings, memberships, roles, branches, invitations or audit reads, also read `docs/22-TENANT-ADMINISTRATION-IMPLEMENTATION.md`. Preserve its approved ALL_BRANCHES administration policy, actor permission ceiling and transactional last-administrator protection. Do not expose arbitrary audit metadata or convert tenant administration into global User/provider administration.
+
+## Operations and notification reads
+
+Before changing the operational home, derived attention, notification interactions or shared web navigation, read `docs/23-OPERATIONS-DASHBOARD-IMPLEMENTATION.md`. Reuse source permissions and branch predicates; never persist duplicate business statuses or expose financial fields through an operations summary. Notification acknowledgement/dismissal must remain personal and cannot resolve source conditions.
+
+## VAT and operational finance
+
+Before changing VAT, acquisition payment plans, receivables or collections, read
+`docs/24-FINANCE-OPERATIONS-IMPLEMENTATION.md` and ADR-012. Preserve unspecified
+historical VAT; document absence cannot imply exemption. ESTIMATE_V1 never creates
+debt. Approval freezes obligations; settlements require idempotency, scope, audit
+and overpayment checks. Corrections reverse payment history rather than deleting it.
+
+## Deployment and operational changes
+
+Read `docs/26-STAGING-PRODUCTION-READINESS.md` before changing production images,
+environment validation, cookies/headers, health checks, migration tooling or release
+workflows. Keep operator/migration credentials out of application containers and
+preserve the environment-bound, non-owner runtime database role. Never reset a
+development/staging/production database to verify a deployment. Run
+`pnpm test:deployment` for deployment/security changes as well as the applicable
+unit and browser regressions. Distinguish disposable HTTPS/restore tests from
+actual hosted deployment, live Auth0, encrypted off-site backup and PITR evidence.
+
+Before changing rental transport quotes or transport margin reporting, also read
+`docs/25-RENTAL-TRANSPORTATION.md`. Keep supplier costs separately permissioned,
+preserve quote history, and keep estimated transport margin separate from machine
+earnings, receivables and payments.

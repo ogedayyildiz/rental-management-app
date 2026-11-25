@@ -21,6 +21,7 @@ export interface BranchRepository {
     context: TenantContext,
     id: string,
     name: string,
+    active?: boolean,
   ): Promise<BranchView | null>;
 }
 export interface FoundationRepositories {
@@ -78,7 +79,8 @@ export class BranchService {
       const after = await repositories.branches.rename(
         context,
         id.data,
-        body.data.name,
+        body.data.name ?? before.name,
+        body.data.active,
       );
       if (!after) throw new AccessError('NOT_FOUND');
       await new AuditService(repositories.audit).branchUpdated(
@@ -87,6 +89,8 @@ export class BranchService {
         after.id,
         before.name,
         after.name,
+        body.data.active === undefined ? undefined : before.active,
+        body.data.active === undefined ? undefined : after.active,
       );
       return after;
     });

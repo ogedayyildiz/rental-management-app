@@ -10,6 +10,11 @@ const contexts = new WeakSet<object>();
 export interface AuthenticatedPrincipal {
   readonly userId: string;
 }
+export function assertAuthenticatedPrincipal(
+  principal: AuthenticatedPrincipal,
+): void {
+  if (!principals.has(principal)) throw new AccessError('UNAUTHENTICATED');
+}
 export interface TenantContext extends TenantAccessRecord {
   readonly kind: 'tenant';
 }

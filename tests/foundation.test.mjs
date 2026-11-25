@@ -1,3 +1,11 @@
+import { financeOperationsCases } from './finance-operations.cases.mjs';
+import { operationsCases } from './operations.cases.mjs';
+import { administrationCases } from './administration.cases.mjs';
+import { deviceCases } from './devices.cases.mjs';
+import { telemetryCases } from './telemetry.cases.mjs';
+import { maintenanceCases } from './maintenance.cases.mjs';
+import { rentalCases } from './rentals.cases.mjs';
+import { machineCases } from './machines.cases.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -5,6 +13,9 @@ import { createRequire } from 'node:module';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { onboardingCases } from './onboarding.cases.mjs';
+import { customerCases } from './customers.cases.mjs';
+import { platformBootstrapCases } from './platform-bootstrap.cases.mjs';
 import { createDatabase } from '../packages/database/dist/index.js';
 import {
   tenantPermissions,
@@ -50,7 +61,7 @@ class TestVerifier extends IdentityVerifier {
 
 test(
   'database, tenant, authorization and audit foundation',
-  { timeout: 120000 },
+  { timeout: 180000 },
   async (suite) => {
     assert.ok(
       process.env.DATABASE_URL,
@@ -86,8 +97,13 @@ test(
         ['PLATFORM', platformPermissions],
       ]) {
         for (const key of keys)
-          await db.permission.create({ data: { key, scope } });
+          await db.permission.upsert({
+            where: { key },
+            create: { key, scope },
+            update: {},
+          });
       }
+      await platformBootstrapCases(suite, db);
       const repository = new PrismaAccessRepository(db);
       const authentication = new AuthenticationService(
         new TestVerifier(),
@@ -665,6 +681,31 @@ test(
             401,
           );
           assert.equal(await status(path, { headers }), 200);
+          const me = await fetch(`${base}/me`, { headers });
+          assert.equal(me.status, 200);
+          const profile = await me.json();
+          assert.equal(profile.id, a.user.id);
+          assert.equal(
+            profile.organizations[0].access.organizationId,
+            a.organization.id,
+          );
+          assert.deepEqual(profile.platformPermissions, []);
+          assert.equal(
+            await status('/platform/organizations', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ name: 'Denied' }),
+            }),
+            403,
+          );
+          assert.equal(
+            await status('/invitations/accept', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ token: 'a'.repeat(43) }),
+            }),
+            401,
+          );
           assert.equal(
             await status(
               `/organizations/${b.organization.id}/branches/${b.branch.id}`,
@@ -705,8 +746,11 @@ test(
       );
 
       await suite.test(
-        'default runtime verifier denies every credential without an OIDC integration',
+        'runtime Auth0 verifier rejects a non-JWT credential',
         async () => {
+          process.env.AUTH0_ISSUER = 'https://identity.example.test/';
+          process.env.AUTH0_AUDIENCE = 'test-api';
+          process.env.AUTH0_ALLOWED_CLIENT_IDS = 'test-web';
           const a = await fixture();
           const module = await Test.createTestingModule({
             imports: [FoundationModule],
@@ -726,6 +770,59 @@ test(
           app = undefined;
         },
       );
+      await administrationCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
+      await financeOperationsCases(suite, db, fixture);
+      await operationsCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
+      await deviceCases(suite, db, fixture);
+      await analyticsCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
+      await telemetryCases(suite, db, fixture);
+      await maintenanceCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
+      await rentalCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
+      await machineCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
+      await onboardingCases(suite, db, fixture);
+      await customerCases(suite, db, fixture, {
+        Test,
+        FoundationModule,
+        DATABASE,
+        IdentityVerifier,
+        TestVerifier,
+      });
     } finally {
       if (app) await app.close();
       if (db) await db.$disconnect();
@@ -737,3 +834,4 @@ test(
     }
   },
 );
+import { analyticsCases } from './analytics.cases.mjs';

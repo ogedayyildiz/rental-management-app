@@ -1,11 +1,64 @@
+import { financeOperationsMessages } from './finance-operations.js';
+import { transportationMessages } from './transportation.js';
+export * from './analytics-duration.js';
+import { currencyMessages } from './currencies.js';
+export { selectableCurrencies, isSelectableCurrency } from './currencies.js';
+import { operationsMessages } from './operations.js';
+import { administrationMessages } from './administration.js';
+import { maintenanceMessages } from './maintenance.js';
+import { analyticsMessages } from './analytics.js';
+import { telemetryMessages } from './telemetry.js';
+import { rentalMessages } from './rentals.js';
+import { machineMessages } from './machines.js';
+import { customerMessages } from './customers.js';
 export const messages = {
   en: {
+    ...transportationMessages.en,
+    ...financeOperationsMessages.en,
+    ...currencyMessages.en,
+    ...operationsMessages.en,
+    ...administrationMessages.en,
+    ...analyticsMessages.en,
+    ...telemetryMessages.en,
+    ...maintenanceMessages.en,
+    ...rentalMessages.en,
+    ...customerMessages.en,
+    ...machineMessages.en,
+    'auth.login': 'Log in',
+    'auth.logout': 'Log out',
+    'auth.currentUser': 'Check application access',
+    'auth.invitation': 'Invitation token',
+    'auth.accept': 'Accept invitation',
+    'auth.success': 'Request completed.',
+    'auth.failed':
+      'Request failed. Check your sign-in and invitation, then try again.',
+    'auth.configurationRequired': 'Authentication configuration is required.',
     'app.title': 'Rental Management',
     'common.notFound': 'Page not found.',
     'bootstrap.description':
       'The workspace is ready. Business features will be added in the next phase.',
   },
   tr: {
+    ...transportationMessages.tr,
+    ...financeOperationsMessages.tr,
+    ...currencyMessages.tr,
+    ...operationsMessages.tr,
+    ...administrationMessages.tr,
+    ...analyticsMessages.tr,
+    ...telemetryMessages.tr,
+    ...maintenanceMessages.tr,
+    ...rentalMessages.tr,
+    ...customerMessages.tr,
+    ...machineMessages.tr,
+    'auth.login': 'Giriş yap',
+    'auth.logout': 'Çıkış yap',
+    'auth.currentUser': 'Uygulama erişimini kontrol et',
+    'auth.invitation': 'Davet kodu',
+    'auth.accept': 'Daveti kabul et',
+    'auth.success': 'İşlem tamamlandı.',
+    'auth.failed':
+      'İşlem başarısız. Girişinizi ve davetinizi kontrol edip tekrar deneyin.',
+    'auth.configurationRequired': 'Kimlik doğrulama yapılandırması gerekiyor.',
     'app.title': 'Kiralama Yönetimi',
     'common.notFound': 'Sayfa bulunamadı.',
     'bootstrap.description':

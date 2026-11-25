@@ -11,6 +11,18 @@ export abstract class IdentityVerifier {
   ): Promise<ExternalIdentityReference | null>;
 }
 
+export interface VerifiedInvitationIdentity extends ExternalIdentityReference {
+  readonly email: string;
+  readonly name: string;
+}
+
+// Onboarding additionally requires provider-verified ownership of the invited email.
+export abstract class InvitationIdentityVerifier {
+  abstract verifyInvitationIdentity(
+    credential: string,
+  ): Promise<VerifiedInvitationIdentity | null>;
+}
+
 export interface TenantAccessRecord {
   readonly membershipId: string;
   readonly userId: string;
@@ -34,7 +46,21 @@ export interface AccessRepository {
 export class AccessError extends Error {
   constructor(
     readonly code:
-      'UNAUTHENTICATED' | 'ACCESS_DENIED' | 'NOT_FOUND' | 'INVALID_INPUT',
+      | 'UNAUTHENTICATED'
+      | 'ACCESS_DENIED'
+      | 'NOT_FOUND'
+      | 'INVALID_INPUT'
+      | 'RENTAL_CONFLICT'
+      | 'RENTAL_FINANCIAL_REFERENCE'
+      | 'MACHINE_INELIGIBLE'
+      | 'MACHINE_ARCHIVED'
+      | 'MACHINE_COMMITTED'
+      | 'MACHINE_COMMITMENT_CONFLICT'
+      | 'INVALID_TRANSITION'
+      | 'ADMIN_LOCKOUT'
+      | 'ROLE_IN_USE'
+      | 'CONFLICT'
+      | 'INACTIVE_CUSTOMER',
   ) {
     super(code);
   }

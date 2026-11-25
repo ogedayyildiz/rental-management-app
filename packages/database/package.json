@@ -23,5 +23,10 @@
     "@prisma/adapter-pg": "7.10.0",
     "@rental/validation": "workspace:*",
     "@rental/permissions": "workspace:*"
-  }
+  },
+  "files": [
+    "dist",
+    "prisma",
+    "prisma.config.ts"
+  ]
 }

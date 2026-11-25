@@ -1958,3 +1958,6 @@ Authentication / Permissions
 
 UI / UX
 → presentation and interaction
+## Initial implementation
+
+See [Maintenance implementation](18-MAINTENANCE-IMPLEMENTATION.md) for the implemented calendar-based WorkOrder workflow, restriction ownership, plan recurrence, permission-protected costs, technical exports and explicitly deferred capabilities. Maintenance now owns service-state block/release actions; generic Machine edits cannot clear restrictions.

@@ -43,6 +43,10 @@ for (const service of ['api', 'telemetry', 'worker']) {
         env: {
           ...process.env,
           HOST: '127.0.0.1',
+          // Synthetic configuration only; no live provider calls in liveness tests.
+          AUTH0_ISSUER: 'https://identity.example.test/',
+          AUTH0_AUDIENCE: 'test-api',
+          AUTH0_ALLOWED_CLIENT_IDS: 'test-web',
           [`${service.toUpperCase()}_PORT`]: String(port),
         },
         stdio: ['ignore', 'pipe', 'pipe'],

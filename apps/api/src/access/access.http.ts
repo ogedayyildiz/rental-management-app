@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { requestId } from '../request-context.js';
 import {
   Catch,
   HttpException,
@@ -13,7 +13,7 @@ import type {
   ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { TenantPermission } from '@rental/permissions';
+import type { TenantPermission, PlatformPermission } from '@rental/permissions';
 import { AccessError } from './contracts.js';
 import {
   AuthenticationService,
@@ -24,6 +24,11 @@ import type { AuthenticatedPrincipal } from './access.service.js';
 
 const PUBLIC = Symbol('public-route');
 const PERMISSION = Symbol('tenant-permission');
+const PLATFORM = Symbol('platform-permission');
+const AUTHENTICATED = Symbol('authenticated');
+export const Authenticated = () => SetMetadata(AUTHENTICATED, true);
+export const RequirePlatformPermission = (permission: PlatformPermission) =>
+  SetMetadata(PLATFORM, permission);
 export const Public = () => SetMetadata(PUBLIC, true);
 export const RequirePermission = (permission: TenantPermission) =>
   SetMetadata(PERMISSION, permission);
@@ -65,6 +70,20 @@ export class AccessGuard implements CanActivate {
     const principal = await this.authentication.authenticate(
       request.headers.authorization,
     );
+    const targets = [execution.getHandler(), execution.getClass()];
+    const platform = this.reflector.getAllAndOverride<PlatformPermission>(
+      PLATFORM,
+      targets,
+    );
+    if (platform) {
+      await this.access.requirePlatform(principal, platform);
+      requests.set(request, { principal, requestId: requestId(request) });
+      return true;
+    }
+    if (this.reflector.getAllAndOverride<boolean>(AUTHENTICATED, targets)) {
+      requests.set(request, { principal, requestId: requestId(request) });
+      return true;
+    }
     const permission = this.reflector.getAllAndOverride<TenantPermission>(
       PERMISSION,
       [execution.getHandler(), execution.getClass()],
@@ -76,7 +95,7 @@ export class AccessGuard implements CanActivate {
       request.params.organizationId,
     );
     requirePermission(context, permission);
-    requests.set(request, { principal, requestId: randomUUID() });
+    requests.set(request, { principal, requestId: requestId(request) });
     return true;
   }
 }
@@ -93,11 +112,31 @@ export class SafeErrorFilter implements ExceptionFilter {
         ACCESS_DENIED: 403,
         NOT_FOUND: 404,
         INVALID_INPUT: 400,
+        CONFLICT: 409,
+        ADMIN_LOCKOUT: 409,
+        ROLE_IN_USE: 409,
+        RENTAL_CONFLICT: 409,
+        RENTAL_FINANCIAL_REFERENCE: 409,
+        MACHINE_INELIGIBLE: 409,
+        MACHINE_ARCHIVED: 409,
+        MACHINE_COMMITTED: 409,
+        MACHINE_COMMITMENT_CONFLICT: 409,
+        INVALID_TRANSITION: 409,
+        INACTIVE_CUSTOMER: 409,
       }[exception.code];
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       code = `HTTP_${status}`;
     }
+    if (status >= 500)
+      console.error(
+        JSON.stringify({
+          event: 'request_failed',
+          service: 'api',
+          status,
+          requestId: requestId(host.switchToHttp().getRequest<object>()),
+        }),
+      );
     const response = host
       .switchToHttp()
       .getResponse<{ status(code: number): { json(body: unknown): void } }>();

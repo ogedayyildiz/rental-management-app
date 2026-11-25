@@ -1,3 +1,4 @@
+
 # Finance and Analytics
 
 **Document:** `09-FINANCE-ANALYTICS.md`  
@@ -30,6 +31,13 @@ All financial calculations must have clearly defined formulas and must not be in
 ---
 
 ## 2. Financial Domain Boundaries
+
+Operational receivables, acquisition commitments, installment plans and manually
+recorded payments/collections are now owned by the application under
+[ADR-012](decisions/ADR-012-OPERATIONAL-RECEIVABLES-AND-PAYABLES.md). External systems
+may still own bank transactions, issued invoices and official accounting records.
+See [operational finance](24-FINANCE-OPERATIONS-IMPLEMENTATION.md) for the approved
+VAT, settlement, authorization and historical-data rules.
 
 The platform owns management information such as:
 
@@ -190,6 +198,11 @@ and:
 Customer Damage Recovery
 
 Transport charges, for example, should not artificially make a machine appear more profitable unless the organization intentionally includes them in machine profitability calculations.
+
+The implemented [transport quote comparison](25-RENTAL-TRANSPORTATION.md) reports
+VAT-exclusive estimated customer price, supplier cost and margin separately, by
+currency and Rental stage. It does not enter machine contribution/recovery or
+create accounting revenue, receivables or payables.
 # 8. Maintenance and Repair Costs
 Maintenance costs may originate from the maintenance domain.
 Possible components include:
@@ -1038,3 +1051,10 @@ Accounting / ERP Integration
 Authentication / Permissions
 → financial access control
 ```
+## Phase 1 implementation policy
+
+> Phase 1 implementation uses the owner-approved **ESTIMATE_V1** operational
+> valuation policy. Its rounding, fixed/manual totals, period allocation, source
+> permissions and accounting limitations are specified in
+> [Finance implementation](21-FINANCE-ANALYTICS-IMPLEMENTATION.md).
+> These estimates are not invoice totals, billed revenue or accounting revenue.

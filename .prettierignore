@@ -12,3 +12,5 @@ apps/web/next-env.d.ts
 apps/mobile/android
 apps/mobile/ios
 packages/database/src/generated/
+.e2e
+apps/web/public/map

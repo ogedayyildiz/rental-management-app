@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
-import { readServiceEnvironment } from '@rental/config';
+import { readServiceEnvironment, validateDeployment } from '@rental/config';
+
+validateDeployment(process.env, 'telemetry');
 
 const { host, port } = readServiceEnvironment(
   process.env,
@@ -7,8 +9,19 @@ const { host, port } = readServiceEnvironment(
   3002,
 );
 
-// Liveness only: ingestion/job processing is intentionally not implemented.
+// Production ingress listeners stay closed until their provider protocols are verified.
 const server = createServer((request, response) => {
+  if (request.method === 'GET' && request.url === '/ready') {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(
+      JSON.stringify({
+        status: 'idle',
+        service: 'telemetry',
+        ingressEnabled: false,
+      }),
+    );
+    return;
+  }
   if (request.method === 'GET' && request.url === '/health') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({ status: 'ok', service: 'telemetry' }));

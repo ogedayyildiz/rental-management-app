@@ -2644,3 +2644,19 @@ Rental business rules:
 Security:
 
 `10-SECURITY.md`
+## Maintenance implementation permissions
+
+The implemented maintenance permission catalog and action requirements are documented in [Maintenance implementation](18-MAINTENANCE-IMPLEMENTATION.md). Cost viewing and editing remain separate (maintenance.costs.view and maintenance.costs.edit); technical block/release and export require explicit grants. Existing TENANT_ADMINISTRATION template roles receive these grants through the audited migration. PlatformAccess confers none of them.
+## Finance / Analytics Phase 1 implementation
+
+`finance.analytics.view` and `finance.analytics.export` are tenant permissions.
+They do not imply acquisition-cost, rental-pricing or maintenance-cost visibility.
+The backend omits restricted source amounts and every dependent contribution/recovery
+metric, including from XLSX. PlatformAccess grants no tenant analytics. See the exact
+source permission matrix in [Finance implementation](21-FINANCE-ANALYTICS-IMPLEMENTATION.md).
+
+## Approved tenant administration implementation policy
+
+Organization-wide settings, membership/role/invitation administration and audit reads require ALL_BRANCHES plus the relevant permission. At least one active global User with an active ALL_BRANCHES Membership must retain organization.manage, users.manage, roles.manage and branches.manage collectively through enabled roles. Mutations cannot grant permissions beyond the actor's own grants, and cannot remove the last such administrative capability. Assigned roles cannot be disabled while referenced by memberships or pending unexpired invitations. Selected-branch business access and scoped branch editing remain unchanged.
+
+The tenant audit reader additionally requires `audit.read`; it exposes only a reviewed event envelope, never arbitrary raw metadata. See [the approved implementation policy and API](22-TENANT-ADMINISTRATION-IMPLEMENTATION.md) for concurrency, membership lifecycle, financial permissions and organization switching.

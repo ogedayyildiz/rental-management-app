@@ -1,8 +1,39 @@
+import { FinanceOperationsController } from './finance/finance.controller.js';
+import { FinanceOperationsService } from './finance/finance.service.js';
+import { PrismaFinanceOperationsUnitOfWork } from './infrastructure/prisma.finance-operations.js';
+import { OperationsController } from './operations/operations.controller.js';
+import { OperationsService } from './operations/operations.service.js';
+import { PrismaOperationsUnitOfWork } from './infrastructure/prisma.operations.js';
+import { AdministrationController } from './administration/administration.controller.js';
+import { AdministrationService } from './administration/administration.service.js';
+import { PrismaAdministrationUnitOfWork } from './infrastructure/prisma.administration.js';
+import { MaintenanceController } from './maintenance/maintenance.controller.js';
+import { DeviceController } from './devices/device.controller.js';
+import { DeviceService } from './devices/device.service.js';
+import { MaintenanceService } from './maintenance/maintenance.service.js';
+import { PrismaMaintenanceUnitOfWork } from './infrastructure/prisma.maintenance.js';
+import { RentalController } from './rentals/rental.controller.js';
+import { RentalService } from './rentals/rental.service.js';
+import { PrismaRentalUnitOfWork } from './infrastructure/prisma.rentals.js';
+import { MachineController } from './machines/machine.controller.js';
+import { MachineService } from './machines/machine.service.js';
+import { PrismaMachineUnitOfWork } from './infrastructure/prisma.machines.js';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { createDatabase } from '@rental/database';
 import type { PrismaClient } from '@rental/database';
-import { IdentityVerifier } from './access/contracts.js';
+import {
+  IdentityVerifier,
+  InvitationIdentityVerifier,
+} from './access/contracts.js';
+import { readAuth0Environment } from '@rental/config';
+import { Auth0IdentityVerifier } from './authentication/auth0.verifier.js';
+import { OnboardingService } from './onboarding/onboarding.service.js';
+import { OnboardingController } from './onboarding/onboarding.controller.js';
+import { PrismaOnboardingUnitOfWork } from './infrastructure/prisma.onboarding.js';
+import { CurrentUserService } from './access/current-user.service.js';
+import { PrismaCurrentUserRepository } from './infrastructure/prisma.current-user.js';
+import { CurrentUserController } from './access/current-user.controller.js';
 import {
   AccessService,
   AuthenticationService,
@@ -14,23 +45,93 @@ import {
 } from './infrastructure/prisma.repositories.js';
 import { BranchService } from './branches/branch.service.js';
 import { BranchController } from './branches/branch.controller.js';
+import { CustomerController } from './customers/customer.controller.js';
+import { CustomerService } from './customers/customer.service.js';
+import { PrismaCustomerUnitOfWork } from './infrastructure/prisma.customers.js';
 
-export const DATABASE = Symbol('database');
+import { DATABASE } from './database.token.js';
+export { DATABASE } from './database.token.js';
 class DatabaseLifecycle {
   constructor(private readonly database: PrismaClient) {}
   async onModuleDestroy(): Promise<void> {
     await this.database.$disconnect();
   }
 }
-class UnconfiguredIdentityVerifier extends IdentityVerifier {
-  override async verify(): Promise<null> {
-    return null;
-  }
-}
 
 @Module({
-  controllers: [BranchController],
+  controllers: [
+    FinanceOperationsController,
+    OperationsController,
+    AdministrationController,
+    AnalyticsController,
+    DeviceController,
+    MaintenanceController,
+    RentalController,
+    BranchController,
+    OnboardingController,
+    CurrentUserController,
+    CustomerController,
+    MachineController,
+  ],
   providers: [
+    {
+      provide: FinanceOperationsService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new FinanceOperationsService(new PrismaFinanceOperationsUnitOfWork(db)),
+    },
+    {
+      provide: OperationsService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new OperationsService(new PrismaOperationsUnitOfWork(db)),
+    },
+    {
+      provide: AdministrationService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new AdministrationService(new PrismaAdministrationUnitOfWork(db)),
+    },
+    {
+      provide: AnalyticsService,
+      inject: [DATABASE, DeviceService],
+      useFactory: (db: PrismaClient, devices: DeviceService) =>
+        new AnalyticsService(
+          new PrismaFinanceUnitOfWork(db),
+          () => new Date(),
+          (principal, org, id) =>
+            devices.machine({ principal, requestId: 'finance-read' }, org, id),
+        ),
+    },
+    {
+      provide: DeviceService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) => new DeviceService(db),
+    },
+    {
+      provide: MaintenanceService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new MaintenanceService(new PrismaMaintenanceUnitOfWork(db)),
+    },
+    {
+      provide: RentalService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new RentalService(new PrismaRentalUnitOfWork(db)),
+    },
+    {
+      provide: MachineService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new MachineService(new PrismaMachineUnitOfWork(db)),
+    },
+    {
+      provide: CustomerService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new CustomerService(new PrismaCustomerUnitOfWork(db)),
+    },
     {
       provide: DATABASE,
       useFactory: () => createDatabase(process.env['DATABASE_URL']),
@@ -40,7 +141,24 @@ class UnconfiguredIdentityVerifier extends IdentityVerifier {
       inject: [DATABASE],
       useFactory: (db: PrismaClient) => new DatabaseLifecycle(db),
     },
-    { provide: IdentityVerifier, useClass: UnconfiguredIdentityVerifier },
+    {
+      provide: IdentityVerifier,
+      useFactory: () =>
+        new Auth0IdentityVerifier(readAuth0Environment(process.env)),
+    },
+    { provide: InvitationIdentityVerifier, useExisting: IdentityVerifier },
+    {
+      provide: OnboardingService,
+      inject: [DATABASE, InvitationIdentityVerifier],
+      useFactory: (db: PrismaClient, verifier: InvitationIdentityVerifier) =>
+        new OnboardingService(new PrismaOnboardingUnitOfWork(db), verifier),
+    },
+    {
+      provide: CurrentUserService,
+      inject: [DATABASE],
+      useFactory: (db: PrismaClient) =>
+        new CurrentUserService(new PrismaCurrentUserRepository(db)),
+    },
     {
       provide: PrismaAccessRepository,
       inject: [DATABASE],
@@ -66,5 +184,9 @@ class UnconfiguredIdentityVerifier extends IdentityVerifier {
     { provide: APP_GUARD, useClass: AccessGuard },
     { provide: APP_FILTER, useClass: SafeErrorFilter },
   ],
+  exports: [DATABASE],
 })
 export class FoundationModule {}
+import { AnalyticsController } from './analytics/analytics.controller.js';
+import { AnalyticsService } from './analytics/analytics.service.js';
+import { PrismaFinanceUnitOfWork } from './infrastructure/prisma.finance.js';

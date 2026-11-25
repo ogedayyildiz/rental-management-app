@@ -15,6 +15,7 @@ minimumReleaseAgeExclude:
   - expo-modules-core@57.0.22
   - expo-modules-jsi@57.1.2
 allowBuilds:
+  browser-tabs-lock: false
   '@nestjs/core': true
   esbuild: true
   sharp: true
